@@ -4,6 +4,15 @@ import numpy as np
 import h5py
 import argparse
 
+def get_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--epochs", default=10, type=int, help="Number of epochs")
+    parser.add_argument("--batch_size", default=32, type=int, help="Batch size")
+    parser.add_argument("--learning_rate", default=0.0001, type=float, help="Initial learning rate")
+    parser.add_argument("--is_training", default=True, type=lambda x: bool(int(x)), help="Training or testing mode")
+    return parser.parse_args()
+
+args = get_arguments()
 
 def read_dataset(hf5):
     hf = h5py.File(hf5,'r')
@@ -22,16 +31,6 @@ def read_dataset(hf5):
     y_test = np.array(y_test)
     return x_train, y_train, x_val, y_val, x_test, y_test
 
-def get_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", default=10, type=int, help="Number of epochs")
-    parser.add_argument("--batch_size", default=32, type=int, help="Batch size")
-    parser.add_argument("--learning_rate", default=0.0001, type=float, help="Initial learning rate")
-    parser.add_argument("--is_training", default=True, type=lambda x: bool(int(x)), help="Training or testing mode")
-    return parser.parse_args()
-
-args = get_arguments()
-
 # Load dataset
 DIR = "/scratch/hnkmah001/Datasets/ctfullbody/larger_fov_with_background/"
 x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400x400.h5')
@@ -43,8 +42,7 @@ x_test = tf.constant(x_test/255.0, dtype=tf.float32)
 train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(len(x_train)).batch(args.batch_size) 
 val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
 test_data = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(1)
-
-print("[INFO] Datasets created...")
+print("[INFO] Datasets loaded...")
 
 # Define the model
 
