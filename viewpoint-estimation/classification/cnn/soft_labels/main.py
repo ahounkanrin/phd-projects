@@ -3,6 +3,7 @@ from tqdm import tqdm
 import numpy as np
 import h5py
 import argparse
+from matplotlib import pyplot as plt
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -132,25 +133,52 @@ if args.is_training:
                             test_loss.result(), tf.round(test_accuracy.result()*100), ckpt_path))
         
         # Reset metrics for the next epoch
-        #train_loss.reset_states()
-        #train_accuracy.reset_states()
-        #test_loss.reset_states()
-        #test_accuracy.reset_states()
+        train_loss.reset_states()
+        train_accuracy.reset_states()
+        test_loss.reset_states()
+        test_accuracy.reset_states()
 else:
 
     checkpoint.restore(manager.checkpoints[-1])
-
+    """
     for val_images, val_labels in tqdm(val_data, desc="Validation"):
             test_step(val_images, val_labels)
     template = "Validation Loss: {}, Validation Accuracy: {}"
     print(template.format(test_loss.result(), tf.round(test_accuracy.result()*100)))
     test_accuracy.reset_states()
-    test_loss.reset_states()
+    test_loss.reset_states()"""
 
+    pred = []
     for test_images, test_labels in tqdm(test_data, desc="Validation"):
             test_step(test_images, test_labels)
+            pred.append(np.argmax(model(test_images)))
     template = "Test Loss: {}, Test Accuracy: {}"
     print(template.format(test_loss.result(), tf.round(test_accuracy.result()*100)))
 
-    
+    gt = [np.argmax(label) for label in y_test]
+    #print("GROUND TRUTH:", gt)
+    #print("PREDICTIONS:", pred)
+
+
+    pred_err1 = np.abs(np.array(pred) - np.array(gt)) 
+    pred_err2 = np.abs(-360 + np.array(pred) - np.array(gt))
+    pred_err3 = np.abs(360 + np.array(pred) - np.array(gt))
+    thresholds = [theta for theta in range(0, 60, 5)]
+    acc_list = []
+    #theta = 10
+    for theta in thresholds:
+
+        acc_bool = np.array([pred_err1[i] <= theta or pred_err2[i] <= theta or pred_err3[i] <= theta for i in range(len(pred_err1))])
+
+        acc = np.array([int(i) for i in acc_bool])
+        acc = np.mean(acc)
+        acc_list.append(acc)
+        print("Accuracy at theta = {} is: {}".format(theta, acc))
+
+        
+    plt.figure()
+    plt.scatter(thresholds, acc_list)
+    plt.grid(True)
+    plt.show()
+    plt.savefig("accuracy.png")
     
