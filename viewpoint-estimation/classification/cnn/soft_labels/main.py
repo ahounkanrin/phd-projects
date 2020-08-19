@@ -34,7 +34,7 @@ def read_dataset(hf5):
 
 # Load dataset
 DIR = "/scratch/hnkmah001/Datasets/ctfullbody/larger_fov_with_background/"
-x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400x400.h5')
+x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400x400_soft_labels.h5')
 
 x_train = tf.constant(x_train/255.0, dtype=tf.float32)
 x_val = tf.constant(x_val/255.0, dtype=tf.float32)
@@ -94,6 +94,7 @@ manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_t
 
 if args.is_training:
 
+    manager.restore_or_initialize() 
     # Save logs with TensorBoard Summary
     train_logdir = "./logs/train"
     val_logdir = "./logs/val"
@@ -128,9 +129,9 @@ if args.is_training:
             tf.summary.image("val_images", test_images, step=epoch, max_outputs=8)
 
         ckpt_path = manager.save()
-        template = "Epoch {}, Loss: {}, Accuracy: {}, Validation Loss: {}, Validation Accuracy: {}, ckpt {}"
-        print(template.format(epoch+1, train_loss.result(), tf.round(train_accuracy.result()*100),
-                            test_loss.result(), tf.round(test_accuracy.result()*100), ckpt_path))
+        template = "\nEpoch {}, Loss: {:.4f}, Accuracy: {:.4f}, Validation Loss: {:.4f}, Validation Accuracy: {:.4f}, ckpt {}\n\n"
+        print(template.format(epoch+1, train_loss.result(), train_accuracy.result(),
+                            test_loss.result(), test_accuracy.result(), ckpt_path))
         
         # Reset metrics for the next epoch
         train_loss.reset_states()
@@ -143,8 +144,8 @@ else:
     """
     for val_images, val_labels in tqdm(val_data, desc="Validation"):
             test_step(val_images, val_labels)
-    template = "Validation Loss: {}, Validation Accuracy: {}"
-    print(template.format(test_loss.result(), tf.round(test_accuracy.result()*100)))
+    template = "Validation Loss: {:.4f}, Validation Accuracy: {:.4f}"
+    print(template.format(test_loss.result(), test_accuracy.result()))
     test_accuracy.reset_states()
     test_loss.reset_states()"""
 
@@ -152,8 +153,8 @@ else:
     for test_images, test_labels in tqdm(test_data, desc="Validation"):
             test_step(test_images, test_labels)
             pred.append(np.argmax(model(test_images)))
-    template = "Test Loss: {}, Test Accuracy: {}"
-    print(template.format(test_loss.result(), tf.round(test_accuracy.result()*100)))
+    template = "Test Loss: {:.4f}, Test Accuracy: {:.4f}"
+    print(template.format(test_loss.result(), test_accuracy.result()))
 
     gt = [np.argmax(label) for label in y_test]
     #print("GROUND TRUTH:", gt)
@@ -173,12 +174,11 @@ else:
         acc = np.array([int(i) for i in acc_bool])
         acc = np.mean(acc)
         acc_list.append(acc)
-        print("Accuracy at theta = {} is: {}".format(theta, acc))
+        print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
 
         
     plt.figure()
     plt.scatter(thresholds, acc_list)
     plt.grid(True)
-    plt.show()
     plt.savefig("accuracy.png")
     

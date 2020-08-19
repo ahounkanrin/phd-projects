@@ -84,4 +84,4 @@ for i in tqdm(range(len(test_img_path))):
     y_test.append(soft_labels_encoder(int(test_img_label[i])-1))
 y_test = np.array(y_test)
 
-save_dataset(x_train, y_train,x_val, y_val, x_test, y_test, DIR + 'chest_fov_400x400.h5')
+save_dataset(x_train, y_train,x_val, y_val, x_test, y_test, DIR + 'chest_fov_400x400_soft_labels.h5')
