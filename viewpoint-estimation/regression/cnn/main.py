@@ -60,8 +60,7 @@ x = tf.keras.layers.Dense(1, activation=tf.keras.activations.sigmoid)(x)
 outputs = tf.multiply(x, 360)
 
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
-#model.build((None, 400, 400, 1))
-#model.summary()
+
 
 # Define cost function, optimizer and metrics
 loss_object = tf.keras.losses.MeanSquaredError()
@@ -70,8 +69,6 @@ lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate,
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
 train_loss = tf.keras.metrics.MeanSquaredError(name="train_loss")
 test_loss = tf.keras.metrics.MeanSquaredError(name="test_loss")
-#train_accuracy = tf.keras.metrics.CategoricalAccuracy()
-#test_accuracy = tf.keras.metrics.CategoricalAccuracy()
 
 @tf.function
 def train_step(images, labels):
@@ -93,7 +90,7 @@ def test_step(images, labels):
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
 checkpoint_dir = "./checkpoints/"
-manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
+manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=3)
 
 if args.is_training:
 
