@@ -40,9 +40,10 @@ x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400
 x_train = tf.constant(x_train/255.0, dtype=tf.float32)
 x_val = tf.constant(x_val/255.0, dtype=tf.float32)
 x_test = tf.constant(x_test/255.0, dtype=tf.float32)
-y_train = tf.cast(y_train, dtype=tf.float32)
-y_val = tf.cast(y_val, dtype=tf.float32)
-y_test = tf.cast(y_test, dtype=tf.float32)
+
+y_train = tf.constant(y_train/360.0, dtype=tf.float32)
+y_val = tf.constant(y_val/360.0, dtype=tf.float32)
+y_test = tf.constant(y_test/360.0, dtype=tf.float32)
 
 train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(len(x_train)).batch(args.batch_size) 
 val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
@@ -53,14 +54,15 @@ print("[INFO] Datasets created...")
 # Define the model
 
 baseModel = tf.keras.applications.InceptionV3(input_shape=(400, 400, 3), include_top=False, weights="imagenet")
+#baseModel.trainable = False
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
-x = tf.keras.layers.Dense(1024, activation=tf.keras.activations.relu)(x)
-x = tf.keras.layers.Dense(1, activation=tf.keras.activations.sigmoid)(x)
-outputs = tf.multiply(x, 360)
+#x = tf.keras.layers.Dense(1024, activation=tf.keras.activations.relu)(x)
+outputs = tf.keras.layers.Dense(1, activation=tf.keras.activations.sigmoid)(x)
+#outputs = tf.multiply(x, 360)
 
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
-
+model.summary()
 
 # Define cost function, optimizer and metrics
 loss_object = tf.keras.losses.MeanSquaredError()
@@ -127,11 +129,11 @@ if args.is_training:
             tf.summary.image("val_images", test_images, step=epoch, max_outputs=8)
 
         ckpt_path = manager.save()
-        template = "\nEpoch {}, Loss: {:.4f}, Validation Loss: {:.4f}, ckpt {}\n\n"
+        template = "\n\n\nEpoch {}, Loss: {:.4f}, Validation Loss: {:.4f}, ckpt {}\n\n"
         print(template.format(epoch+1, train_loss.result(), test_loss.result(), ckpt_path))
         
         # Reset metrics for the next epoch
-        train_loss.reset_states()
+        #train_loss.reset_states()
         test_loss.reset_states()
         
 else:
@@ -140,23 +142,19 @@ else:
 
     for val_images, val_labels in tqdm(val_data, desc="Validation"):
             test_step(val_images, val_labels)
-    template = "Validation Loss: {:.4f}"
-    print(template.format(test_loss.result()))
+    print("Validation Loss: {:.4f}".format(test_loss.result()))
     test_loss.reset_states()
 
     pred = []
     for test_images, test_labels in tqdm(test_data, desc="Validation"):
             test_step(test_images, test_labels)
-            pred.append(model(test_images))
-    template = "Test Loss: {:.4f}"
-    print(template.format(test_loss.result()))
+            pred.append(360*model(test_images))
+    print("Test Loss: {:.4f}".format(test_loss.result()))
 
     
     gt = y_test
     #print("GROUND TRUTH:", gt)
     #print("PREDICTIONS:", pred)
-
-
     pred_err1 = np.abs(np.array(pred) - np.array(gt)) 
     pred_err2 = np.abs(-360 + np.array(pred) - np.array(gt))
     pred_err3 = np.abs(360 + np.array(pred) - np.array(gt))
