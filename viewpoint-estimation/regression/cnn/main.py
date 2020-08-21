@@ -25,7 +25,7 @@ def read_dataset(hf5):
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", default=10, type=int, help="Number of epochs")
+    parser.add_argument("--epochs", default=50, type=int, help="Number of epochs")
     parser.add_argument("--batch_size", default=32, type=int, help="Batch size")
     parser.add_argument("--learning_rate", default=0.0001, type=float, help="Initial learning rate")
     parser.add_argument("--is_training", default=True, type=lambda x: bool(int(x)), help="Training or testing mode")
@@ -41,9 +41,9 @@ x_train = tf.constant(x_train/255.0, dtype=tf.float32)
 x_val = tf.constant(x_val/255.0, dtype=tf.float32)
 x_test = tf.constant(x_test/255.0, dtype=tf.float32)
 
-y_train = tf.constant(y_train/360.0, dtype=tf.float32)
-y_val = tf.constant(y_val/360.0, dtype=tf.float32)
-y_test = tf.constant(y_test/360.0, dtype=tf.float32)
+y_train = tf.constant((np.pi/180.0) * y_train, dtype=tf.float32) # Convert angles from degrees to radians
+y_val = tf.constant((np.pi/180.0) * y_val, dtype=tf.float32)
+y_test = tf.constant((np.pi/180.0)* y_test, dtype=tf.float32)
 
 train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(len(x_train)).batch(args.batch_size) 
 val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
@@ -57,38 +57,48 @@ baseModel = tf.keras.applications.InceptionV3(input_shape=(400, 400, 3), include
 #baseModel.trainable = False
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
-#x = tf.keras.layers.Dense(1024, activation=tf.keras.activations.relu)(x)
-outputs = tf.keras.layers.Dense(1, activation=tf.keras.activations.sigmoid)(x)
-#outputs = tf.multiply(x, 360)
-
+x = tf.keras.layers.Dense(1024, activation=tf.keras.activations.relu)(x)
+x = tf.keras.layers.Dense(1, activation=tf.keras.activations.sigmoid)(x)
+outputs = tf.multiply(x, tf.constant(2*np.pi))
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
 model.summary()
 
 # Define cost function, optimizer and metrics
-loss_object = tf.keras.losses.MeanSquaredError()
+loss_object_sin = tf.keras.losses.MeanSquaredError()
+loss_object_cos = tf.keras.losses.MeanSquaredError()
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=1000, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
-train_loss = tf.keras.metrics.MeanSquaredError(name="train_loss")
-test_loss = tf.keras.metrics.MeanSquaredError(name="test_loss")
+train_loss_sin = tf.keras.metrics.MeanSquaredError(name="train_loss_sin")
+train_loss_cos = tf.keras.metrics.MeanSquaredError(name="train_loss_coss")
+test_loss_sin = tf.keras.metrics.MeanSquaredError(name="test_loss_sin")
+test_loss_cos = tf.keras.metrics.MeanSquaredError(name="test_loss_cos")
 
 @tf.function
 def train_step(images, labels):
-    # All ops involving trainable variables under the GradientTape context manager are recorded for gradient computation purposes
-    with tf.GradientTape() as tape:
-        predictions = model(images)
-        loss = loss_object(labels, predictions)
-    # Calculate gradients of cost function w.r.t trainable variables and release resources held by GradientTape
-    gradients = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    # Calculate metrics
-    train_loss.update_state(labels, predictions)
+    with tf.GradientTape() as tape_sin:
+        predictions_sin = model(images)
+        loss_sin = loss_object_sin(tf.math.sin(labels), tf.math.sin(predictions_sin))
+           
+    with tf.GradientTape() as tape_cos:
+        predictions_cos = model(images)
+        loss_cos = loss_object_cos(tf.math.cos(labels), tf.math.cos(predictions_cos))
+
+    gradients_sin = tape_sin.gradient(loss_sin, model.trainable_variables)
+    gradients_cos = tape_cos.gradient(loss_cos, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients_sin, model.trainable_variables))
+    optimizer.apply_gradients(zip(gradients_cos, model.trainable_variables))
+
+    train_loss_sin.update_state(tf.math.sin(labels), tf.math.sin(predictions_sin))
+    train_loss_cos.update_state(tf.math.cos(labels), tf.math.cos(predictions_cos))
+    
 
 @tf.function
 def test_step(images, labels):
     predictions = model(images)
-    test_loss.update_state(labels, predictions)
-
+    test_loss_sin.update_state(tf.math.sin(labels), tf.math.sin(predictions))
+    test_loss_cos.update_state(tf.math.cos(labels), tf.math.cos(predictions))
+    
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
 checkpoint_dir = "./checkpoints/"
@@ -96,7 +106,6 @@ manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_t
 
 if args.is_training:
 
-    #manager.restore_or_initialize() 
     # Save logs with TensorBoard Summary
     train_logdir = "./logs/train"
     val_logdir = "./logs/val"
@@ -119,22 +128,26 @@ if args.is_training:
                     tf.summary.trace_export(name="InceptionV3", step=0)
             step += 1
             with train_summary_writer.as_default():
-                tf.summary.scalar("loss", train_loss.result(), step=step)
+                tf.summary.scalar("loss_sin", train_loss_sin.result(), step=step)
+                tf.summary.scalar("loss_cos", train_loss_cos.result(), step=step)
                 tf.summary.image("image", images, step=step, max_outputs=8)
 
         for test_images, test_labels in tqdm(val_data, desc="Validation"):
             test_step(test_images, test_labels)
         with val_summary_writer.as_default():
-            tf.summary.scalar("val_loss", test_loss.result(), step=epoch)
+            tf.summary.scalar("val_loss_sin", test_loss_sin.result(), step=epoch)
+            tf.summary.scalar("val_loss_cos", test_loss_cos.result(), step=epoch)
             tf.summary.image("val_images", test_images, step=epoch, max_outputs=8)
 
         ckpt_path = manager.save()
-        template = "\n\n\nEpoch {}, Loss: {:.4f}, Validation Loss: {:.4f}, ckpt {}\n\n"
-        print(template.format(epoch+1, train_loss.result(), test_loss.result(), ckpt_path))
+        template = "\n\n\nEpoch {}, Loss-sin: {:.4f}, Loss-cos: {:.4f}, Val Loss-sin: {:.4f}, Val Loss-cos: {:.4f}, ckpt {}\n\n"
+        print(template.format(epoch+1, train_loss_sin.result(), train_loss_cos.result(), 
+              test_loss_sin.result(), test_loss_cos.result(), ckpt_path))
         
         # Reset metrics for the next epoch
         #train_loss.reset_states()
-        test_loss.reset_states()
+        test_loss_sin.reset_states()
+        test_loss_cos.reset_states()
         
 else:
 
@@ -142,19 +155,18 @@ else:
 
     for val_images, val_labels in tqdm(val_data, desc="Validation"):
             test_step(val_images, val_labels)
-    print("Validation Loss: {:.4f}".format(test_loss.result()))
-    test_loss.reset_states()
+    print("Val Loss-sin: {:.4f}, Val Loss-cos: {:.4f}".format(test_loss_sin.result(), test_loss_cos))
+    test_loss_sin.reset_states()
+    test_loss_cos.reset_states()
 
     pred = []
     for test_images, test_labels in tqdm(test_data, desc="Validation"):
             test_step(test_images, test_labels)
-            pred.append(360*model(test_images))
-    print("Test Loss: {:.4f}".format(test_loss.result()))
+            pred.append((180./np.pi)*model(test_images)) # Convert angles from radians to degrees
+    print("Test Loss-sin: {:.4f}, Test Loss-cos: {:.4f}".format(test_loss_sin.result(), test_loss_cos))
 
     
     gt = y_test
-    #print("GROUND TRUTH:", gt)
-    #print("PREDICTIONS:", pred)
     pred_err1 = np.abs(np.array(pred) - np.array(gt)) 
     pred_err2 = np.abs(-360 + np.array(pred) - np.array(gt))
     pred_err3 = np.abs(360 + np.array(pred) - np.array(gt))

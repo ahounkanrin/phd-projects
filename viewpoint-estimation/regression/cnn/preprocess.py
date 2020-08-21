@@ -38,11 +38,8 @@ def soft_labels_encoder_v2(angle):
 	labels[(angle-3)%360] = 0.05
 	labels[(angle+1)%360] = 0.2
 	labels[(angle+2)%360] = 0.1
-	labels[(angle+3)%360] = 0.05
-				
+	labels[(angle+3)%360] = 0.05				
 	return labels
-
-
 
 print('[INFO] Loading CSV files...')
 train_csv = pd.read_csv('train_rz.csv', sep=',')
