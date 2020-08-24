@@ -1,3 +1,5 @@
 viewpoint-estimation/classification/cnn/soft_labels/checkpoints/
 viewpoint-estimation/classification/cnn/soft_labels/logs/
 viewpoint-estimation/regression/cnn/logs/
+viewpoint-estimation/regression/cnn/logs_sin_cos/
+
