@@ -6,30 +6,23 @@ import argparse
 from matplotlib import pyplot as plt
 
 
-def read_dataset(hf5):
-    hf = h5py.File(hf5,'r')
-    x_train = hf.get('x_train')
-    y_train = hf.get('y_train')
-    x_val = hf.get("x_val")
-    y_val = hf.get("y_val")
-    x_test = hf.get('x_test')
-    y_test = hf.get('y_test')
-
-    x_train = np.array(x_train)
-    y_train = np.array(y_train)
-    x_val = np.array(x_val)
-    y_val = np.array(y_val)
-    x_test = np.array(x_test)
-    y_test = np.array(y_test)
-    return x_train, y_train, x_val, y_val, x_test, y_test
-
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", default=50, type=int, help="Number of epochs")
-    parser.add_argument("--batch_size", default=64, type=int, help="Batch size")
-    parser.add_argument("--learning_rate", default=0.00001, type=float, help="Initial learning rate")
+    parser.add_argument("--batch_size", default=1,   type=int, help="Batch size")
+    parser.add_argument("--learning_rate", default=0.000001, type=float, help="Initial learning rate")
     parser.add_argument("--is_training", default=True, type=lambda x: bool(int(x)), help="Training or testing mode")
     return parser.parse_args()
+
+def read_dataset(hf5):
+    hf = h5py.File(hf5,'r')
+    x_train = np.array(hf.get('x_train'))
+    y_train = np.array(hf.get('y_train'))
+    x_val = np.array(hf.get("x_val"))
+    y_val = np.array(hf.get("y_val"))
+    x_test = np.array(hf.get('x_test'))
+    y_test = np.array(hf.get('y_test'))
+    return x_train, y_train, x_val, y_val, x_test, y_test
 
 def preprocess(x, y):
     x = tf.cast(x, dtype=tf.float32)
@@ -49,11 +42,16 @@ def myMSE(images, labels):
     loss_cos = tf.math.squared_difference(gt_cos, pred_cos)
     loss_cos = tf.math.reduce_mean(loss_cos)
     loss = loss_cos + loss_sin
-    
     return loss
 
+def myMSE2(predictions, labels):
+    #predictions = model(images)
+    loss_batch = 1.0 - tf.math.cos(labels - predictions)
+    loss = tf.math.reduce_mean(loss_batch)
+    return loss
 
 args = get_arguments()
+
 
 # Load dataset
 DIR = "/scratch/hnkmah001/Datasets/ctfullbody/larger_fov_with_background/"
@@ -71,37 +69,54 @@ baseModel = tf.keras.applications.InceptionV3(input_shape=(400, 400, 3), include
 #baseModel.trainable = False
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
-x = tf.keras.layers.Dense(1024, activation=tf.keras.activations.relu)(x)
+x = tf.keras.layers.Dense(1024, activation=None)(x) # TO DO: try linear activation instead of relu
 x = tf.keras.layers.Dense(1, activation=tf.keras.activations.sigmoid)(x)
 outputs = tf.multiply(x, tf.constant(2*np.pi))
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
 model.summary()
 
 # Define cost function, optimizer and metrics
-#loss_object_sin = tf.keras.losses.MeanSquaredError()
+loss_object = tf.keras.losses.MeanSquaredError()
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=1000, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
-#train_loss_sin = tf.keras.metrics.MeanSquaredError(name="train_loss_sin")
-#test_loss_sin = tf.keras.metrics.MeanSquaredError(name="test_loss_sin")
+#optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+train_loss = tf.keras.metrics.MeanSquaredError(name="train_loss")
+test_loss = tf.keras.metrics.MeanSquaredError(name="test_loss")
 
 @tf.function
 def train_step(images, labels):
     with tf.GradientTape() as tape:
-        #predictions_sin = model(images)
-        loss = myMSE(images, labels)
+        predictions = model(images)
+        loss = myMSE2(predictions, labels)
            
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
     #train_loss_sin.update_state(tf.math.sin(labels), tf.math.sin(predictions_sin))
     return loss
-
-
+    
 @tf.function
 def test_step(images, labels):
-    return myMSE(images, labels)
-    
+    predictions = model(images)
+    return myMSE2(predictions, labels)
+
+@tf.function 
+def train_step2(images, labels):
+    with tf.GradientTape() as tape:
+        predictions = model(images)
+        loss = loss_object(labels, predictions) 
+
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    train_loss.update_state(labels, predictions)
+    del tape
+
+@tf.function
+def test_step2(images, labels):
+    predictions = model(images)
+    test_loss.update_state(labels, predictions)
+
     
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
@@ -128,34 +143,38 @@ if args.is_training:
         for images, labels in tqdm(train_data.map(preprocess, 
                                    num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Training"):
             loss = train_step(images, labels)
-            print("Training loss:", loss.numpy())
+            #train_step2(images, labels)
+            print("\t Training loss: {:.4f}".format(loss))
             if step == 0:
                 with train_summary_writer.as_default():
                     tf.summary.trace_export(name="InceptionV3", step=0)
             step += 1
             with train_summary_writer.as_default():
                 tf.summary.scalar("loss", loss, step=step)
+                #tf.summary.scalar("loss", train_loss.result(), step=step)
                 tf.summary.image("image", images, step=step, max_outputs=8)
 
         test_it = 0
         loss_val = 0.
         for test_images, test_labels in tqdm(val_data.map(preprocess, 
                                              num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
+            #test_step2(test_images, test_labels)
             loss_val += test_step(test_images, test_labels)
             test_it += 1
         loss_val = loss_val/tf.constant(test_it, dtype=tf.float32)
             
         with val_summary_writer.as_default():
             tf.summary.scalar("val_loss", loss_val, step=epoch)
+            #tf.summary.scalar("val_loss", test_loss.result(), step=epoch)
             tf.summary.image("val_images", test_images, step=epoch, max_outputs=8)
 
         ckpt_path = manager.save()
-        template = "\n\n\nEpoch {}, Loss: {:.4f}, Val Loss: {:.4f},  ckpt {}\n\n"
-        print(template.format(epoch+1, loss, loss_val, ckpt_path))
+        template = "\n\n\nEpoch {}, Val Loss: {:.4f},  ckpt {}\n\n"
+        print(template.format(epoch+1, loss_val, ckpt_path))
         
         # Reset metrics for the next epoch
         #train_loss.reset_states()
-        #test_loss_sin.reset_states()        
+        #test_loss.reset_states()        
 else:
 
     checkpoint.restore(manager.checkpoints[-1])
@@ -174,10 +193,11 @@ else:
                                          num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
             test_loss += test_step(test_images, test_labels)
             pred.append((180./np.pi)*model(test_images)) # Convert angles from radians to degrees
+            count += 1
     test_loss = test_loss/tf.constant(count, dtype=tf.float32)
     print("Test Loss: {:.4f}".format(test_loss))
 
-    gt = (180./np.pi)* np.array(y_test)
+    gt = y_test.astype(float)
     pred = np.array(pred)
     pred = np.squeeze(pred)
     pred_err1 = np.abs(pred - gt) 
@@ -187,6 +207,7 @@ else:
     acc_list = []
     #theta = 10
 
+    
     print("gt:", gt)
     print("pred:", pred)
     #
