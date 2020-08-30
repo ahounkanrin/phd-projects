@@ -45,7 +45,6 @@ def myMSE(images, labels):
     return loss
 
 def myMSE2(predictions, labels):
-    #predictions = model(images)
     loss_batch = 1.0 - tf.math.cos(labels - predictions)
     loss = tf.math.reduce_mean(loss_batch)
     return loss
@@ -61,7 +60,7 @@ train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(len(
 val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
 test_data = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(1)
 
-print("[INFO] Datasets created...")
+print("INFO: Datasets loaded...")
 
 # Define the model
 
@@ -69,7 +68,7 @@ baseModel = tf.keras.applications.InceptionV3(input_shape=(400, 400, 3), include
 #baseModel.trainable = False
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
-x = tf.keras.layers.Dense(1024, activation=None)(x) # TO DO: try linear activation instead of relu
+x = tf.keras.layers.Dense(1024, activation=tf.keras.activations.relu)(x) # TO DO: try linear activation 
 x = tf.keras.layers.Dense(1, activation=tf.keras.activations.sigmoid)(x)
 outputs = tf.multiply(x, tf.constant(2*np.pi))
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
@@ -80,7 +79,6 @@ loss_object = tf.keras.losses.MeanSquaredError()
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=1000, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
-#optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
 train_loss = tf.keras.metrics.MeanSquaredError(name="train_loss")
 test_loss = tf.keras.metrics.MeanSquaredError(name="test_loss")
 
@@ -110,7 +108,6 @@ def train_step2(images, labels):
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     train_loss.update_state(labels, predictions)
-    del tape
 
 @tf.function
 def test_step2(images, labels):
@@ -143,7 +140,6 @@ if args.is_training:
         for images, labels in tqdm(train_data.map(preprocess, 
                                    num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Training"):
             loss = train_step(images, labels)
-            #train_step2(images, labels)
             print("\t Training loss: {:.4f}".format(loss))
             if step == 0:
                 with train_summary_writer.as_default():
@@ -151,21 +147,18 @@ if args.is_training:
             step += 1
             with train_summary_writer.as_default():
                 tf.summary.scalar("loss", loss, step=step)
-                #tf.summary.scalar("loss", train_loss.result(), step=step)
                 tf.summary.image("image", images, step=step, max_outputs=8)
 
         test_it = 0
         loss_val = 0.
         for test_images, test_labels in tqdm(val_data.map(preprocess, 
                                              num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
-            #test_step2(test_images, test_labels)
             loss_val += test_step(test_images, test_labels)
             test_it += 1
         loss_val = loss_val/tf.constant(test_it, dtype=tf.float32)
             
         with val_summary_writer.as_default():
             tf.summary.scalar("val_loss", loss_val, step=epoch)
-            #tf.summary.scalar("val_loss", test_loss.result(), step=epoch)
             tf.summary.image("val_images", test_images, step=epoch, max_outputs=8)
 
         ckpt_path = manager.save()
@@ -178,13 +171,6 @@ if args.is_training:
 else:
 
     checkpoint.restore(manager.checkpoints[-1])
-
-    """
-    for val_images, val_labels in tqdm(val_data, desc="Validation"):
-            test_step(val_images, val_labels)
-    print("Val Loss-sin: {:.4f}, Val Loss-mse: {:.4f}".format(test_loss_sin.result(), test_loss_mse.result()))
-    test_loss_sin.reset_states()
-    test_loss_mse.reset_states()"""
 
     pred = []
     test_loss = 0.
@@ -205,12 +191,10 @@ else:
     pred_err3 = np.abs(360 + pred - gt)
     thresholds = [theta for theta in range(0, 60, 5)]
     acc_list = []
-    #theta = 10
 
-    
     print("gt:", gt)
     print("pred:", pred)
-    #
+    
     for theta in thresholds:
 
         acc_bool = np.array([pred_err1[i] <= theta or pred_err2[i] <= theta or pred_err3[i] <= theta for i in range(len(pred_err1))])
