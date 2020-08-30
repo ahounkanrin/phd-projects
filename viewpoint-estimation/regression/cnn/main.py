@@ -139,35 +139,37 @@ if args.is_training:
     for epoch in tqdm(range(args.epochs)):
         for images, labels in tqdm(train_data.map(preprocess, 
                                    num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Training"):
-            loss = train_step(images, labels)
-            print("\t Training loss: {:.4f}".format(loss))
+            #loss = train_step(images, labels)
+            train_step2(images, labels)
+            print("\t Training loss: {:.4f}".format(train_loss.result()))
             if step == 0:
                 with train_summary_writer.as_default():
                     tf.summary.trace_export(name="InceptionV3", step=0)
             step += 1
             with train_summary_writer.as_default():
-                tf.summary.scalar("loss", loss, step=step)
+                tf.summary.scalar("loss", train_loss.result(), step=step)
                 tf.summary.image("image", images, step=step, max_outputs=8)
 
-        test_it = 0
-        loss_val = 0.
+        #test_it = 0
+        #loss_val = 0.
         for test_images, test_labels in tqdm(val_data.map(preprocess, 
                                              num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
-            loss_val += test_step(test_images, test_labels)
-            test_it += 1
-        loss_val = loss_val/tf.constant(test_it, dtype=tf.float32)
+            test_step2(test_images, test_labels)
+            #loss_val += test_step(test_images, test_labels)
+            #test_it += 1
+        #loss_val = loss_val/tf.constant(test_it, dtype=tf.float32)
             
         with val_summary_writer.as_default():
-            tf.summary.scalar("val_loss", loss_val, step=epoch)
+            tf.summary.scalar("val_loss", test_loss.result(), step=epoch)
             tf.summary.image("val_images", test_images, step=epoch, max_outputs=8)
 
         ckpt_path = manager.save()
         template = "\n\n\nEpoch {}, Val Loss: {:.4f},  ckpt {}\n\n"
-        print(template.format(epoch+1, loss_val, ckpt_path))
+        print(template.format(epoch+1, test_loss.result(), ckpt_path))
         
         # Reset metrics for the next epoch
        
-        #test_loss.reset_states()        
+        test_loss.reset_states()        
 else:
 
     checkpoint.restore(manager.checkpoints[-1])
