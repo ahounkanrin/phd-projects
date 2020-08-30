@@ -68,7 +68,7 @@ baseModel = tf.keras.applications.InceptionV3(input_shape=(400, 400, 3), include
 #baseModel.trainable = False
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
-x = tf.keras.layers.Dense(1024, activation=tf.keras.activations.relu)(x) # TO DO: try linear activation 
+x = tf.keras.layers.Dense(1024, activation=tf.keras.activations.relu)(x) 
 x = tf.keras.layers.Dense(1, activation=tf.keras.activations.sigmoid)(x)
 outputs = tf.multiply(x, tf.constant(2*np.pi))
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
@@ -166,7 +166,7 @@ if args.is_training:
         print(template.format(epoch+1, loss_val, ckpt_path))
         
         # Reset metrics for the next epoch
-        #train_loss.reset_states()
+       
         #test_loss.reset_states()        
 else:
 
