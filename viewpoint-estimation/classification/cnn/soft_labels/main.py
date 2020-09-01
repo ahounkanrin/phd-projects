@@ -32,6 +32,11 @@ def read_dataset(hf5):
     y_test = np.array(y_test)
     return x_train, y_train, x_val, y_val, x_test, y_test
 
+def preprocess(x, y):
+    x = tf.cast(x, dtype=tf.float32)
+    x = tf.divide(x, tf.constant(255.0, dtype=tf.float32))
+    return x, y
+
 # Load dataset
 DIR = "/scratch/hnkmah001/Datasets/ctfullbody/larger_fov_with_background/"
 x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400x400_soft_labels.h5')
