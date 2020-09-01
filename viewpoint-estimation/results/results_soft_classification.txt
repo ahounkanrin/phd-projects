@@ -1,0 +1,15 @@
+Soft classification results:
+
+Test Loss: 5.8730, Test Accuracy: 0.0306
+Accuracy at theta = 0 is: 0.0306
+Accuracy at theta = 5 is: 0.3444
+Accuracy at theta = 10 is: 0.5889
+Accuracy at theta = 15 is: 0.7167
+Accuracy at theta = 20 is: 0.7528
+Accuracy at theta = 25 is: 0.7611
+Accuracy at theta = 30 is: 0.7639
+Accuracy at theta = 35 is: 0.7722
+Accuracy at theta = 40 is: 0.7750
+Accuracy at theta = 45 is: 0.7944
+Accuracy at theta = 50 is: 0.8000
+Accuracy at theta = 55 is: 0.8111

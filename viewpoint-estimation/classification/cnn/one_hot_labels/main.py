@@ -131,6 +131,7 @@ if args.is_training:
 else:
         
     restored_model = keras.models.load_model(model_path)
+    #restored_model = keras.models.load_weights(weight_path)
     restored_model.compile(loss='sparse_categorical_crossentropy',
                         optimizer=keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9),
                         metrics=['accuracy'])
@@ -178,6 +179,6 @@ else:
     plt.figure()
     plt.scatter(thresholds, acc_list)
     plt.grid(True)
-    plt.show()
+    #plt.show()
     plt.savefig("accuracy.png")
         #model.summary()
