@@ -51,7 +51,7 @@ tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir, update_freq="
 weight_path = "./checkpoints/weights.h5"
 model_path = "./checkpoints/model.h5"
 checkpoint_callback = keras.callbacks.ModelCheckpoint(filepath=weight_path, verbose=1, save_best_only=True)
-stopping_callback = keras.callbacks.EarlyStopping(monitor="val_loss", patience=2, verbose=1, mode="auto")
+stopping_callback = keras.callbacks.EarlyStopping(monitor="val_loss", patience=5, verbose=1, mode="auto")
 
 train_datagen = keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
 val_datagen = keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
