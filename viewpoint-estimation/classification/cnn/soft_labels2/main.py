@@ -5,12 +5,11 @@ import h5py
 import argparse
 from matplotlib import pyplot as plt
 import cv2 as cv
-
-
+import os
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", default=50, type=int, help="Number of epochs")
+    parser.add_argument("--epochs", default=100, type=int, help="Number of epochs")
     parser.add_argument("--batch_size", default=128, type=int, help="Batch size")
     parser.add_argument("--learning_rate", default=0.0001, type=float, help="Initial learning rate")
     parser.add_argument("--is_training", default=True, type=lambda x: bool(int(x)), help="Training or testing mode")
@@ -41,7 +40,7 @@ def preprocess(x, y):
     return x, y
 
 # Load dataset
-print("\nINFO: Loading dataset...")
+print("INFO: Loading dataset...")
 DIR = "/scratch/hnkmah001/Datasets/ctfullbody/larger_fov_with_background/"
 x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400x400_soft_labels.h5')
 
@@ -49,11 +48,11 @@ xtrain = []
 xval = []
 xtest = []
 for i in range(len(x_train)):
-    xtrain.append(cv.resize(x_train[i], (100, 100)))
+    xtrain.append(cv.resize(x_train[i], (200, 200), interpolation = cv.INTER_AREA))
 for i in range(len(x_val)):
-    xval.append(cv.resize(x_val[i], (100, 100))) 
+    xval.append(cv.resize(x_val[i], (200, 200), interpolation = cv.INTER_AREA)) 
 for i in range(len(x_test)):
-    xtest.append(cv.resize(x_test[i], (100, 100)))
+    xtest.append(cv.resize(x_test[i], (200, 200), interpolation = cv.INTER_AREA))
 
 x_train = np.array(xtrain)
 x_val = np.array(xval)
@@ -65,18 +64,19 @@ print("[INFO] Datasets loaded...")
 
 # Define the model
 
-baseModel = tf.keras.applications.InceptionV3(input_shape=(100, 100, 3), include_top=False, weights="imagenet")
+baseModel = tf.keras.applications.InceptionV3(input_shape=(200, 200, 3), include_top=False, weights="imagenet")
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
 x = tf.keras.layers.Dense(1024, activation="relu")(x)
 outputs = tf.keras.layers.Dense(360, activation="softmax")(x)
 
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
+#model.build((None, 100, 100, 1))
 model.summary()
 
 # Define cost function, optimizer and metrics
 loss_object = tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=250, 
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=1000, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
 train_loss = tf.keras.metrics.CategoricalCrossentropy(name="train_loss")
@@ -107,6 +107,9 @@ def test_step(images, labels):
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
 checkpoint_dir = "./checkpoints/"
+if not os.path.isdir(checkpoint_dir):
+    os.mkdir(checkpoint_dir)
+
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
 
 if args.is_training:
@@ -148,9 +151,8 @@ if args.is_training:
             tf.summary.image("val_images", test_images, step=epoch, max_outputs=8)
 
         ckpt_path = manager.save()
-        template = "\nEpoch {}, Loss: {:.4f}, Accuracy: {:.4f}, Validation Loss: {:.4f}, Validation Accuracy: {:.4f}, ckpt {}\n\n"
-        print(template.format(epoch+1, train_loss.result(), train_accuracy.result(),
-                            test_loss.result(), test_accuracy.result(), ckpt_path))
+        template = "\t Epoch {}, Validation Loss: {:.4f}, Validation Accuracy: {:.4f}, ckpt {}\n\n"
+        print(template.format(epoch+1, test_loss.result(), test_accuracy.result(), ckpt_path))
         
         # Reset metrics for the next epoch
         train_loss.reset_states()
@@ -159,7 +161,7 @@ if args.is_training:
         test_accuracy.reset_states()
 else:
 
-    checkpoint.restore(manager.checkpoints[-1])
+    checkpoint.restore(manager.checkpoints[1])
     """
     for val_images, val_labels in tqdm(val_data, desc="Validation"):
             test_step(val_images, val_labels)
