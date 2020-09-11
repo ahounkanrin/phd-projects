@@ -1,0 +1,16 @@
+Soft classification results: input size of 200x200
+Median error: 7.0
+Accuracy at theta = 0 is: 0.0528
+Accuracy at theta = 5 is: 0.4250
+Accuracy at theta = 10 is: 0.6000
+Accuracy at theta = 15 is: 0.6583
+Accuracy at theta = 20 is: 0.6750
+Accuracy at theta = 25 is: 0.6861
+Accuracy at theta = 30 is: 0.7083
+Accuracy at theta = 35 is: 0.7333
+Accuracy at theta = 40 is: 0.7417
+Accuracy at theta = 45 is: 0.7583
+Accuracy at theta = 50 is: 0.7833
+Accuracy at theta = 55 is: 0.7917
+
+Note: last checkpoint
