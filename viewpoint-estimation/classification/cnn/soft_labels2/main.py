@@ -10,7 +10,7 @@ import os
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", default=100, type=int, help="Number of epochs")
-    parser.add_argument("--batch_size", default=128, type=int, help="Batch size")
+    parser.add_argument("--batch_size", default=256, type=int, help="Batch size")
     parser.add_argument("--learning_rate", default=0.0001, type=float, help="Initial learning rate")
     parser.add_argument("--is_training", default=True, type=lambda x: bool(int(x)), help="Training or testing mode")
     return parser.parse_args()
@@ -48,11 +48,11 @@ xtrain = []
 xval = []
 xtest = []
 for i in range(len(x_train)):
-    xtrain.append(cv.resize(x_train[i], (200, 200), interpolation = cv.INTER_AREA))
+    xtrain.append(cv.resize(x_train[i], (100, 100), interpolation = cv.INTER_AREA))
 for i in range(len(x_val)):
-    xval.append(cv.resize(x_val[i], (200, 200), interpolation = cv.INTER_AREA)) 
+    xval.append(cv.resize(x_val[i], (100, 100), interpolation = cv.INTER_AREA)) 
 for i in range(len(x_test)):
-    xtest.append(cv.resize(x_test[i], (200, 200), interpolation = cv.INTER_AREA))
+    xtest.append(cv.resize(x_test[i], (100, 100), interpolation = cv.INTER_AREA))
 
 x_train = np.array(xtrain)
 x_val = np.array(xval)
@@ -64,7 +64,7 @@ print("[INFO] Datasets loaded...")
 
 # Define the model
 
-baseModel = tf.keras.applications.InceptionV3(input_shape=(200, 200, 3), include_top=False, weights="imagenet")
+baseModel = tf.keras.applications.InceptionV3(input_shape=(100, 100, 3), include_top=False, weights="imagenet")
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
 x = tf.keras.layers.Dense(1024, activation="relu")(x)
@@ -161,7 +161,7 @@ if args.is_training:
         test_accuracy.reset_states()
 else:
 
-    checkpoint.restore(manager.checkpoints[1])
+    checkpoint.restore(manager.checkpoints[0])
     """
     for val_images, val_labels in tqdm(val_data, desc="Validation"):
             test_step(val_images, val_labels)
@@ -179,22 +179,15 @@ else:
     print(template.format(test_loss.result(), test_accuracy.result()))
 
     gt = [np.argmax(label) for label in y_test]
-    #print("GROUND TRUTH:", gt)
-    #print("PREDICTIONS:", pred)
-
-
-    pred_err1 = np.abs(np.array(pred) - np.array(gt)) 
-    pred_err2 = np.abs(-360 + np.array(pred) - np.array(gt))
-    pred_err3 = np.abs(360 + np.array(pred) - np.array(gt))
+    error = np.abs(np.array(pred) - np.array(gt)) % 360
     thresholds = [theta for theta in range(0, 60, 5)]
+
+    print("\n\nMedian error:", np.median(error))
     acc_list = []
-    #theta = 10
+
     for theta in thresholds:
-
-        acc_bool = np.array([pred_err1[i] <= theta or pred_err2[i] <= theta or pred_err3[i] <= theta for i in range(len(pred_err1))])
-
-        acc = np.array([int(i) for i in acc_bool])
-        acc = np.mean(acc)
+        acc_bool = np.array([error[i] <= theta  for i in range(len(error))])
+        acc = np.mean(acc_bool)
         acc_list.append(acc)
         print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
 

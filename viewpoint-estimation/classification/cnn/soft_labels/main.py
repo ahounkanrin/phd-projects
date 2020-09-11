@@ -162,22 +162,15 @@ else:
     print(template.format(test_loss.result(), test_accuracy.result()))
 
     gt = [np.argmax(label) for label in y_test]
-    #print("GROUND TRUTH:", gt)
-    #print("PREDICTIONS:", pred)
-
-
-    pred_err1 = np.abs(np.array(pred) - np.array(gt)) 
-    pred_err2 = np.abs(-360 + np.array(pred) - np.array(gt))
-    pred_err3 = np.abs(360 + np.array(pred) - np.array(gt))
+    pred_err = np.abs(np.array(pred) - np.array(gt)) % 360
     thresholds = [theta for theta in range(0, 60, 5)]
+
+    print("\n\nMedian error:", np.median(pred_err))
     acc_list = []
-    #theta = 10
+
     for theta in thresholds:
-
-        acc_bool = np.array([pred_err1[i] <= theta or pred_err2[i] <= theta or pred_err3[i] <= theta for i in range(len(pred_err1))])
-
-        acc = np.array([int(i) for i in acc_bool])
-        acc = np.mean(acc)
+        acc_bool = np.array([pred_err[i] <= theta  for i in range(len(pred_err))])
+        acc = np.mean(acc_bool)
         acc_list.append(acc)
         print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
 
@@ -186,4 +179,4 @@ else:
     plt.scatter(thresholds, acc_list)
     plt.grid(True)
     plt.savefig("accuracy.png")
-    
+  

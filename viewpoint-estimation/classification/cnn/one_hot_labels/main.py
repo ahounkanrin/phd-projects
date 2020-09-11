@@ -160,20 +160,17 @@ else:
     print("Test: Loss = {:.4f}\t Accuracy = {:.4f}".format(test_result[0], test_result[1]))
 
 
-    pred_err1 = np.abs(np.array(pred_classes) - np.array(testdf["label"].tolist())) 
-    pred_err2 = np.abs(-360 + np.array(pred_classes) - np.array(testdf["label"].tolist()))
-    pred_err3 = np.abs(360 + np.array(pred_classes) - np.array(testdf["label"].tolist()))
+    pred_err = np.abs(np.array(pred_classes) - np.array(testdf["label"].tolist())) 
     thresholds = [theta for theta in range(0, 60, 5)]
+    
+    print("\n\nMedian error:", np.median(pred_err))
     acc_list = []
-    #theta = 10
+
     for theta in thresholds:
-
-        acc_bool = np.array([pred_err1[i] <= theta or pred_err2[i] <= theta or pred_err3[i] <= theta for i in range(len(pred_err1))])
-
-        acc = np.array([int(i) for i in acc_bool])
-        acc = np.mean(acc)
+        acc_bool = np.array([pred_err[i] <= theta  for i in range(len(pred_err))])
+        acc = np.mean(acc_bool)
         acc_list.append(acc)
-        print("Accuracy at theta = {} is: {}".format(theta, acc))
+        print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
 
         
     plt.figure()
