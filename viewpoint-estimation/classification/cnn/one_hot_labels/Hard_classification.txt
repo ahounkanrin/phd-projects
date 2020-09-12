@@ -1,0 +1,13 @@
+Median Error = 19.0000
+Accuracy at theta = 0 is: 0.0139
+Accuracy at theta = 5 is: 0.2083
+Accuracy at theta = 10 is: 0.3667
+Accuracy at theta = 15 is: 0.4556
+Accuracy at theta = 20 is: 0.5056
+Accuracy at theta = 25 is: 0.5389
+Accuracy at theta = 30 is: 0.5611
+Accuracy at theta = 35 is: 0.5917
+Accuracy at theta = 40 is: 0.6083
+Accuracy at theta = 45 is: 0.6167
+Accuracy at theta = 50 is: 0.6250
+Accuracy at theta = 55 is: 0.6333
