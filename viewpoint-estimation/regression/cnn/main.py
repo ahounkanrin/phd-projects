@@ -4,6 +4,7 @@ import numpy as np
 import h5py
 import argparse
 from matplotlib import pyplot as plt
+from utils import geodesic_distance, rotation_matrix
 
 
 def get_arguments():
@@ -53,6 +54,7 @@ args = get_arguments()
 
 
 # Load dataset
+print("INFO: Loading dataset...")
 DIR = "/scratch/hnkmah001/Datasets/ctfullbody/larger_fov_with_background/"
 x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400x400_sparse_labels.h5')
 train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(len(x_train)).batch(args.batch_size) 
@@ -150,41 +152,33 @@ else:
     checkpoint.restore(manager.checkpoints[0])
 
     pred = []
-    test_loss = 0.
-    count = 0
     for test_images, test_labels in tqdm(test_data.map(preprocess, 
                                          num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
-            test_loss += test_step(test_images, test_labels)
             pred.append((180./np.pi)*model(test_images)) # Convert angles from radians to degrees
-            count += 1
-    test_loss = test_loss/tf.constant(count, dtype=tf.float32)
-    print("Test Loss: {:.4f}".format(test_loss))
+    
 
     gt = y_test.astype(float)
     pred = np.array(pred)
     pred = np.squeeze(pred)
-    pred_err1 = np.abs(pred - gt) 
-    pred_err2 = np.abs(-360 + pred - gt)
-    pred_err3 = np.abs(360 + pred - gt)
-    thresholds = [theta for theta in range(0, 60, 5)]
-    acc_list = []
 
-    print("gt:", gt)
-    print("pred:", pred)
+    error1 = np.abs(pred - gt) % 360      
+    error2 = [geodesic_distance(rotation_matrix(gt[i]), rotation_matrix(pred[i])) for i in range(len(gt))]
+    with open("predictions.txt", "w") as f:
+        for i in range(len(gt)):    
+            print("gt = {:.4f}\t pred = {:.4f}\t error (abs) = {:.4f} \t error (geodesic)  = {:.4f}".format(gt[i], 
+                 pred[i], error1[i], error2[i]), file=f)
     
+    print("\n\nMedian Error = {:.4f}".format(np.median(np.array(error2))))
+    with open("regression.txt", "w") as f:
+        print("Median Error = {:.4f}".format(np.median(np.array(error2))), file=f)
+
+    acc_list2 = []
+    thresholds = [theta for theta in range(0, 60, 5)] 
     for theta in thresholds:
-
-        acc_bool = np.array([pred_err1[i] <= theta or pred_err2[i] <= theta or pred_err3[i] <= theta for i in range(len(pred_err1))])
-        acc = np.array([int(i) for i in acc_bool])
-        acc = np.mean(acc)
-        acc_list.append(acc)
-        print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
-
+        acc_bool2 = np.array([error2[i] <= theta  for i in range(len(error2))])
+        acc2 = np.mean(acc_bool2)
+        acc_list2.append(acc2)
+        print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2))
+        with open("regression.txt", "a") as f:
+            print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2), file=f)
         
-    plt.figure()
-    plt.scatter(thresholds, acc_list)
-    plt.grid(True)
-    #plt.show()
-    plt.savefig("accuracy.png")
-    
-    

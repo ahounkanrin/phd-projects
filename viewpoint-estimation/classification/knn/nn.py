@@ -13,6 +13,7 @@ import seaborn as sns
 import sklearn
 import matplotlib.pyplot as plt
 from keras.utils import multi_gpu_model
+from utils import geodesic_distance, rotation_matrix
 
 
 with K.name_scope("Encoder"):
@@ -105,59 +106,22 @@ for i in tqdm(range(len(test_img)), desc="Testing"):
     knearest_labels = [train_label[j] for j in knearest_dist_indices]
     pred.append(most_common(knearest_labels))
 
+gt = np.array(test_label)
+pred = np.array(pred)
 
-print(test_label)
-print(pred)
-accuracy = accuracy_score(y_true=test_label, y_pred=pred)
-
-print("Accuracy = ", accuracy)
-
-pred_err1 = np.abs(np.array(test_label) - np.array(pred)) 
-pred_err2 = np.abs(-360 + np.array(test_label) - np.array(pred))
-thresholds = [theta for theta in range(0, 60, 5)]
-acc_list = []
-#theta = 10
-for theta in thresholds:
-
-    acc_bool = np.array([pred_err1[i] <= theta or pred_err2[i] <= theta for i in range(len(pred_err1))])
-
-    acc = np.array([int(i) for i in acc_bool])
-    acc = np.mean(acc)
-    acc_list.append(acc)
-    print("Accuracy at theta = {} is: {}".format(theta, acc))
-
-    pred_df = pd.DataFrame()
-    pred_df["image"] = test_img
-    pred_df["label"] = test_label
-    pred_df["prediction"] = pred
-    pred_df["match"] = acc_bool
-    pred_df.to_csv("prediction_360.csv", index=False, sep=",")
-
+error2 = [geodesic_distance(rotation_matrix(gt[i]), rotation_matrix(pred[i])) for i in range(len(gt))]
     
+print("\n\nMedian Error = {:.4f}".format(np.median(np.array(error2))))
+with open("regression.txt", "w") as f:
+    print("Median Error = {:.4f}".format(np.median(np.array(error2))), file=f)
 
-    n = 100  
-    plt.figure(figsize=(300, 10))
-    for i in range(n):
-        plt.subplot(2, n, i + 1)
-        gtimg = cv.imread(test_img[i], 0)
-        plt.imshow(gtimg)
-        plt.gray()
-        plt.title("GT: {} deg".format(str(i+1)))
-
-        plt.subplot(2, n, i + 1 + n)
-        predimg = cv.imread(train_img[pred[i]], 0)
-        plt.imshow(predimg)
-        plt.gray()
-        title_obj = plt.title("Pred: {} deg".format(str(pred[i])))
-        if acc_bool[i]:
-            plt.setp(title_obj, color='b') 
-        else: 
-            plt.setp(title_obj, color='r') 
-    plt.show()
-    plt.savefig("predictions{}.png".format(str(theta)))
-
-plt.figure()
-plt.scatter(thresholds, acc_list)
-plt.grid(True)
-plt.show()
-plt.savefig("accuracy.png")
+acc_list2 = []
+thresholds = [theta for theta in range(0, 60, 5)]
+for theta in thresholds:
+    acc_bool2 = np.array([error2[i] <= theta  for i in range(len(error2))])
+    acc2 = np.mean(acc_bool2)
+    acc_list2.append(acc2)
+    print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2))
+    with open("regression.txt", "a") as f:
+        print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2), file=f)
+    

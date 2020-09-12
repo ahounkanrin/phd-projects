@@ -1,36 +1,77 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
+print("INFO: Plotting...")
 thresholds = [theta for theta in range(0, 60, 5)]
 
-regression = [0.0000, 0.0639,  0.1278 , 0.1750, 0.2167, 0.2500, 0.3028 , 0.3694 , 0.4333 , 0.5028, 0.5722, 0.6111] 
-knn = [0.0083, 0.0806, 0.2222, 0.3472, 0.4583, 0.5222, 0.5778, 0.6,  0.6083, 0.6222, 0.6333, 0.6416]
-soft_classification = [0.0306, 0.3444, 0.5889, 0.7167, 0.7528, 0.7611, 0.7639, 0.7722, 0.7750, 0.7944, 0.8000,0.8111]
-hard_classification = [0.0306, 0.2194, 0.3416, 0.4111, 0.4639, 0.5139, 0.55, 0.5722, 0.5917, 0.625, 0.6361, 0.6417]
-soft_classification_200x200 = [0.0361, 0.3694, 0.5389,0.5806, 0.5917, 0.6028, 0.6028, 0.6028, 0.6167, 0.6306, 0.6444, 0.6694]
-soft_classification_100x100 = [0.0444, 0.3333, 0.4750, 0.5361, 0.5528, 0.5583, 0.5583, 0.5583, 0.5667, 0.5917, 0.6333, 0.6639 ]
+medErr_regression = 45.3841
+acc_regression = [0.0000, 0.0528, 0.1250, 0.1694, 0.2056, 0.2444, 0.3083, 0.3722, 0.4361, 0.4944, 0.5556, 0.6194]
+medErr_knn =  23.5
+acc_knn = [0.0056, 0.0778, 0.2111, 0.3222, 0.4500, 0.5167, 0.5778, 0.5972, 0.6083, 0.6139, 0.6333, 0.6417]
+medErr_soft_classification = 9.0
+acc_soft_classification = [0.0222, 0.3194, 0.5861, 0.7083, 0.7500, 0.7611, 0.7639, 0.7722, 0.7750, 0.7917, 0.8000, 0.8083]
+medErr_hard_classification = 19.0
+acc_hard_classification = [0.0139, 0.2083, 0.3667, 0.4556, 0.5056, 0.5389, 0.5611, 0.5917, 0.6083, 0.6167, 0.6250, 0.6333]
+medErr_soft_classification_300x300 = 7.0
+acc_soft_classification_300x300 = [0.0222, 0.4222, 0.5833, 0.6639, 0.6806, 0.6806, 0.6889,  0.6972, 0.7139, 0.7167, 0.7167, 0.7417]
+
+medErr_soft_classification_200x200 = 7.0
+acc_soft_classification_200x200 = [0.0278, 0.4056, 0.6111, 0.6806, 0.6944, 0.7083, 0.7278, 0.7528, 0.7639, 0.7778, 0.8028, 0.8111]
+medErr_soft_classification_100x100 = 15.5
+acc_soft_classification_100x100 = [0.0167, 0.2528, 0.4083, 0.4944, 0.5083, 0.5167, 0.5250, 0.5333, 0.5389, 0.5500, 0.5556, 0.5833]
 
 plt.figure(figsize=[10, 7])
-plt.title("Azimuth estimation")
+plt.title("Azimuth estimation - Accuracy")
 plt.ylabel("Accuracy")
 plt.xlabel("Maximum error (degrees)")
 
-plt.plot(thresholds, regression, label="Regression")
-plt.plot(thresholds, knn, label="KNN")
-plt.plot(thresholds, soft_classification, label="Soft classification")
-plt.plot(thresholds, hard_classification, label="Hard classification")
-plt.legend(loc="upper left")
+plt.plot(thresholds, acc_regression, label="Regression")
+plt.plot(thresholds, acc_knn, label="KNN")
+plt.plot(thresholds, acc_soft_classification, label="Soft classification")
+plt.plot(thresholds, acc_hard_classification, label="Hard classification")
+plt.legend(loc="lower right")
 plt.grid(True)
 plt.savefig("azimuth_accuracy.png")
 
 plt.figure(figsize=[10, 7])
-plt.title("Azimuth estimation -multiscale input")
+plt.title("Azimuth estimation accuracy- Multiscale input size")
 plt.ylabel("Accuracy")
 plt.xlabel("Maximum error (degrees)")
 
-plt.plot(thresholds, soft_classification, label="Soft classification - 400x400")
-plt.plot(thresholds, soft_classification_200x200, label="Soft classification - 200x200")
-plt.plot(thresholds, soft_classification_100x100, label="Soft classification - 100x100")
-plt.legend(loc="upper left")
+plt.plot(thresholds, acc_soft_classification, label="Input size - 400x400")
+plt.plot(thresholds, acc_soft_classification_300x300, label="Input size - 300x300")
+plt.plot(thresholds, acc_soft_classification_200x200, label="Input size - 200x200")
+plt.plot(thresholds, acc_soft_classification_100x100, label="Input size - 100x100")
+plt.legend(loc="lower right")
 plt.grid(True)
 plt.savefig("azimuth_accuracy_multiscale.png")
+
+
+medErrs = [medErr_regression, medErr_knn, medErr_hard_classification, medErr_soft_classification]
+
+medErrs_multiscale = [medErr_soft_classification, medErr_soft_classification_300x300, medErr_soft_classification_200x200, medErr_soft_classification_100x100]
+
+plt.figure(figsize=[10, 7])
+plt.title("Azimuth estimation - Median Error")
+plt.ylabel("Median Error (degrees)")
+plt.bar(0, medErrs[0], color="b", label="Regression")
+plt.bar(1, medErrs[1], color="orange", label="KNN")
+plt.bar(2, medErrs[2], color="r", label="Hard classification")
+plt.bar(3, medErrs[3], color="g", label="Soft classification")
+plt.xticks([0, 1, 2, 3], [])
+plt.legend(loc="upper right")
+plt.savefig("azimuth_mederr.png")
+
+plt.figure(figsize=[10, 7])
+plt.title("Azimuth estimation Median Error - Multiscale input size")
+plt.ylabel("Median Error (degrees)")
+plt.bar(0, medErrs_multiscale[0], color="b", label="Input size - 400x400")
+plt.bar(1, medErrs_multiscale[1], color="orange", label="Input size - 300x300")
+plt.bar(2, medErrs_multiscale[2], color="g", label="Input size - 200x200")
+plt.bar(3, medErrs_multiscale[3], color="r", label="Input size - 100x100")
+#plt.bar(3, medErrs_multiscale[3], color="g", label="Soft classification")
+plt.xticks([0, 1, 2, 3], [])
+plt.legend(loc="upper left")
+plt.savefig("azimuth_mederr_multiscale.png")
+
+print("Done!")
