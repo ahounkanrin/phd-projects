@@ -3,7 +3,7 @@ from tqdm import tqdm
 import numpy as np
 import h5py
 import argparse
-from matplotlib import pyplot as plt
+from utils import rotation_matrix, geodesic_distance
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -32,18 +32,17 @@ def read_dataset(hf5):
     y_test = np.array(y_test)
     return x_train, y_train, x_val, y_val, x_test, y_test
 
+
 def preprocess(x, y):
     x = tf.cast(x, dtype=tf.float32)
     x = tf.divide(x, tf.constant(255.0, dtype=tf.float32))
     return x, y
 
 # Load dataset
+# Load dataset
+print("INFO: Loading dataset...")
 DIR = "/scratch/hnkmah001/Datasets/ctfullbody/larger_fov_with_background/"
 x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400x400_soft_labels.h5')
-
-x_train = tf.constant(x_train/255.0, dtype=tf.float32)
-x_val = tf.constant(x_val/255.0, dtype=tf.float32)
-x_test = tf.constant(x_test/255.0, dtype=tf.float32)
 
 train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(len(x_train)).batch(args.batch_size) 
 val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
@@ -115,7 +114,8 @@ if args.is_training:
     # Training loop
     step = 0
     for epoch in tqdm(range(args.epochs)):
-        for images, labels in tqdm(train_data, desc="Training"):
+        for images, labels in tqdm(train_data.map(preprocess, 
+                                   num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Training"):
             train_step(images, labels)
             if step == 0:
                 with train_summary_writer.as_default():
@@ -126,7 +126,8 @@ if args.is_training:
                 tf.summary.scalar("accuracy", train_accuracy.result(), step=step)
                 tf.summary.image("image", images, step=step, max_outputs=8)
 
-        for test_images, test_labels in tqdm(val_data, desc="Validation"):
+        for test_images, test_labels in tqdm(val_data.map(preprocess, 
+                                             num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
             test_step(test_images, test_labels)
         with val_summary_writer.as_default():
             tf.summary.scalar("val_loss", test_loss.result(), step=epoch)
@@ -146,37 +147,31 @@ if args.is_training:
 else:
 
     checkpoint.restore(manager.checkpoints[-1])
-    """
-    for val_images, val_labels in tqdm(val_data, desc="Validation"):
-            test_step(val_images, val_labels)
-    template = "Validation Loss: {:.4f}, Validation Accuracy: {:.4f}"
-    print(template.format(test_loss.result(), test_accuracy.result()))
-    test_accuracy.reset_states()
-    test_loss.reset_states()"""
+    #checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation/classification/cnn/soft_labels/checkpoints/ckpt-20") # manager.checkpoints[-1]
 
     pred = []
-    for test_images, test_labels in tqdm(test_data, desc="Validation"):
+    for test_images, test_labels in tqdm(test_data.map(preprocess, 
+                                         num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
             test_step(test_images, test_labels)
             pred.append(np.argmax(model(test_images)))
     template = "Test Loss: {:.4f}, Test Accuracy: {:.4f}"
     print(template.format(test_loss.result(), test_accuracy.result()))
 
     gt = [np.argmax(label) for label in y_test]
-    pred_err = np.abs(np.array(pred) - np.array(gt)) % 360
     thresholds = [theta for theta in range(0, 60, 5)]
 
-    print("\n\nMedian error:", np.median(pred_err))
-    acc_list = []
+    error2 = [geodesic_distance(rotation_matrix(gt[i]), rotation_matrix(pred[i])) for i in range(len(gt))]
+    
+    print("\n\nMedian Error = {:.4f}".format(np.median(np.array(error2))))
+    with open("soft_classification_400x400.txt", "w") as f:
+        print("Median Error = {:.4f}".format(np.median(np.array(error2))), file=f)
+
+    acc_list2 = []
 
     for theta in thresholds:
-        acc_bool = np.array([pred_err[i] <= theta  for i in range(len(pred_err))])
-        acc = np.mean(acc_bool)
-        acc_list.append(acc)
-        print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
-
-        
-    plt.figure()
-    plt.scatter(thresholds, acc_list)
-    plt.grid(True)
-    plt.savefig("accuracy.png")
-  
+        acc_bool2 = np.array([error2[i] <= theta  for i in range(len(error2))])
+        acc2 = np.mean(acc_bool2)
+        acc_list2.append(acc2)
+        print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2))
+        with open("soft_classification_400x400.txt", "a") as f:
+            print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2), file=f)
