@@ -20,7 +20,7 @@ acc_soft_classification_200x200 = [0.0278, 0.4056, 0.6111, 0.6806, 0.6944, 0.708
 medErr_soft_classification_100x100 = 15.5
 acc_soft_classification_100x100 = [0.0167, 0.2528, 0.4083, 0.4944, 0.5083, 0.5167, 0.5250, 0.5333, 0.5389, 0.5500, 0.5556, 0.5833]
 
-plt.figure(figsize=[10, 7])
+plt.figure(figsize=[8, 5])
 plt.title("Azimuth estimation - Accuracy")
 plt.ylabel("Accuracy")
 plt.xlabel("Maximum error (degrees)")
@@ -33,7 +33,7 @@ plt.legend(loc="lower right")
 plt.grid(True)
 plt.savefig("azimuth_accuracy.png")
 
-plt.figure(figsize=[10, 7])
+plt.figure(figsize=[8, 5])
 plt.title("Azimuth estimation accuracy- Multiscale input size")
 plt.ylabel("Accuracy")
 plt.xlabel("Maximum error (degrees)")
