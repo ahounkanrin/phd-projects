@@ -51,7 +51,7 @@ medErrs = [medErr_regression, medErr_knn, medErr_hard_classification, medErr_sof
 
 medErrs_multiscale = [medErr_soft_classification, medErr_soft_classification_300x300, medErr_soft_classification_200x200, medErr_soft_classification_100x100]
 
-plt.figure(figsize=[8, 4])
+plt.figure(figsize=[4, 4])
 plt.title("Azimuth estimation - Median Error")
 plt.ylabel("Median Error (degrees)")
 plt.bar(0, medErrs[0], color="b", label="Regression")
@@ -62,7 +62,7 @@ plt.xticks([0, 1, 2, 3], [])
 plt.legend(loc="upper right")
 plt.savefig("azimuth_mederr.png")
 
-plt.figure(figsize=[8, 4])
+plt.figure(figsize=[4, 4])
 plt.title("Azimuth estimation Median Error - Multiscale input size")
 plt.ylabel("Median Error (degrees)")
 plt.bar(0, medErrs_multiscale[0], color="b", label="Input size - 400x400")
