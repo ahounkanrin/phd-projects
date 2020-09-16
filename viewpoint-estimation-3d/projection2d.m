@@ -8,7 +8,7 @@ if axis == "z"
     imgrp = squeeze(sum(imgr, 2));
     imgrps = rescale(imgrp);
     imgrps8 = uint8(255 * imgrps);
-    img2d = imgrps8(55:454, 64:463);
+    img2d = imgrps8;
     img2d = transpose(img2d);
     %imwrite(img2d, strcat(num2str(angle), ".png"));
 
@@ -17,7 +17,7 @@ elseif axis == "y"
     imgrp = squeeze(sum(imgr, 2));
     imgrps = rescale(imgrp);
     imgrps8 = uint8(255 * imgrps);
-    img2d = imgrps8(55:454, 64:463);
+    img2d = imgrps8;
     img2d = transpose(img2d);
     %imwrite(img2d, strcat(num2str(angle), ".png"));
 elseif axis == "x"
@@ -25,9 +25,9 @@ elseif axis == "x"
     imgrp = squeeze(sum(imgr, 2));
     imgrps = rescale(imgrp);
     imgrps8 = uint8(255 * imgrps);
-    img2d = imgrps8(55:454, 64:463);
+    img2d = imgrps8;
     img2d = transpose(img2d);
     %imwrite(img2d, strcat(num2str(angle), ".png"));
 else
-    error("MATLAB ERROR: Unrecognized axis")
+    error("Unrecognized axis")
 end 
