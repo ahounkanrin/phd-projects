@@ -1,4 +1,3 @@
-#import nibabel as nib
 import tensorflow as tf
 import numpy as np
 import matlab.engine
@@ -10,6 +9,8 @@ import argparse
 from utils import rotation_matrix, soft_label_encoding, one_hot_encoding
 from tqdm import tqdm
 import time
+#import nibabel as nib
+
 
 eng = matlab.engine.start_matlab()
 
@@ -17,16 +18,13 @@ INPUT_SIZE = (256, 256)
 #DATA_DIR = "/home/anicet/Datasets/ctfullbody/"
 imgpath = "/home/anicet/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii"
 imgpath2 = "/home/anicet/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
-#ctscan = nib.load(imgpath)
-#data = ctscan.get_fdata()
-#data = np.squeeze(data)
-#data_up = data[:,:,:512]
+
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", type=int, default=5, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
     parser.add_argument("--learning_rate", type=float, default=0.0001, help="Learning rate")
-    parser.add_argument("--steps", type=int, default=10, help="Number of training iteration")
+    parser.add_argument("--steps", type=int, default=10000, help="Number of training iteration")
     return parser.parse_args()
 args = get_arguments()
 
@@ -47,7 +45,7 @@ model.summary()
 
 # Define cost function, optimizer and metrics
 loss_object = tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=1000, 
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=300, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
 train_loss = tf.keras.metrics.CategoricalCrossentropy(name="train_loss")
@@ -106,7 +104,6 @@ for step in range(args.steps):
         val_logdir = "./logs/val"
         train_summary_writer = tf.summary.create_file_writer(train_logdir)
         val_summary_writer = tf.summary.create_file_writer(val_logdir)
-
         tf.summary.trace_on(graph=True)
     
     for images, labels in train_data.map(preprocess, num_parallel_calls=tf.data.experimental.AUTOTUNE):
@@ -125,18 +122,18 @@ for step in range(args.steps):
         train_loss.reset_states()
         train_accuracy.reset_states()
 
-    if step%5 == 0:
-        y_val = [soft_label_encoding(i) for i in range(10)] # replace 10 by 360
+    if step%100 == 0:
+        y_val = [soft_label_encoding(i) for i in range(360)]
         y_val = np.array(y_val)
         x_val = []
-        for angle in tqdm(range(10), desc="Generating validation data"): # replace 10 by 360
+        for angle in tqdm(range(360), desc="Generating validation data"):
             img = eng.projection2d(imgpath2, angle, "z")
             img = np.array(img).astype("uint8")
             img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
             img = np.stack((img, img, img), axis=-1)
             x_val.append(img)
         x_val = np.array(x_val)
-        val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(1)
+        val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
 
         for test_images, test_labels in tqdm(val_data.map(preprocess, 
                                              num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
@@ -155,16 +152,3 @@ for step in range(args.steps):
         test_accuracy.reset_states()
 
 
-
-"""    
-count = 0
-for dirs in os.listdir(DATA_DIR):
-    count += 1
-    print("{}\t{}".format(count, dirs))
-    img = eng.projection2d(DATA_DIR+dirs+"/"+dirs+".nii", 45, "x")
-    img = np.array(img).astype("uint8")
-    img = cv.resize(img, (200, 200), interpolation=cv.INTER_AREA)
-    #plt.imshow(img, cmap='gray')
-    #plt.show()
-print("Done!")
-"""
