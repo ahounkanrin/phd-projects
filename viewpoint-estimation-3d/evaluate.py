@@ -15,8 +15,7 @@ eng = matlab.engine.start_matlab()
 
 INPUT_SIZE = (256, 256)
 #DATA_DIR = "/home/anicet/Datasets/ctfullbody/"
-imgpath = "/home/anicet/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
-
+imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -73,15 +72,15 @@ def test_step(images, labels):
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "./checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/checkpoints/"
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
 
 checkpoint.restore(manager.checkpoints[-1]) 
 
-y_test = [soft_label_encoding(i) for i in range(10)] # replace 10 by 360
+y_test = [soft_label_encoding(i) for i in range(360)] # replace 10 by 360
 y_test = np.array(y_test)
 x_test = []
-for angle in tqdm(range(10), desc="Generating test data"): # replace 10 by 360
+for angle in tqdm(range(360), desc="Generating test data"): # replace 10 by 360
     img = eng.projection2d(imgpath, angle, "z")
     img = np.array(img).astype("uint8")
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
@@ -103,7 +102,7 @@ error1 = np.abs(np.array(pred) - np.array(gt)) % 360
 error2 = [geodesic_distance(rotation_matrix(gt[i]), rotation_matrix(pred[i])) for i in range(len(gt))]
 
 print("\n\nMedian Error = {:.4f}".format(np.median(np.array(error2))))
-with open("classisification_results.txt", "w") as f:
+with open("classification_3d.txt", "w") as f:
     print("Median Error = {:.4f}".format(np.median(np.array(error2))), file=f)
 
 acc_list2 = []
@@ -113,7 +112,7 @@ for theta in thresholds:
     acc2 = np.mean(acc_bool2)
     acc_list2.append(acc2)
     print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2))
-    with open("classification_results.txt", "a") as f:
+    with open("classification_3d.txt", "a") as f:
         print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2), file=f)
         
 

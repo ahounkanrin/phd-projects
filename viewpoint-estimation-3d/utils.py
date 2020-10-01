@@ -2,6 +2,7 @@ import math
 import sys
 import numpy as np
 from scipy.linalg import logm
+import tensorflow as tf
 
 def soft_label_encoding(angle, stdev=10):
     angle = int(angle)
