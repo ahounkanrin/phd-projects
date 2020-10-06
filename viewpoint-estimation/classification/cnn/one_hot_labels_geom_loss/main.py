@@ -64,7 +64,8 @@ y_test = np.array([one_hot_encoding(i-1) for i in y_test]).astype("float32")
 x_train = np.array(xtrain)
 x_val = np.array(xval)
 x_test = np.array(xtest)
-train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(len(x_train)).batch(args.batch_size) 
+train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(len(x_train)).batch(args.batch_size)  # use prefetch
+#train_data = train_data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
 test_data = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(1)
 print("[INFO] Datasets loaded...")
@@ -79,7 +80,7 @@ model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
 #model.summary()
 
 # Define cost function, optimizer and metrics
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=500, 
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=200, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
 train_accuracy = tf.keras.metrics.CategoricalAccuracy(name="train_accuracy")
@@ -91,7 +92,8 @@ def train_step(images, labels):
     # All ops involving trainable variables under the GradientTape context manager are recorded for gradient computation
     with tf.GradientTape() as tape:
         predictions = model(images)
-        loss = geom_cross_entropy(predictions=predictions, labels=labels)
+        loss = geom_cross_entropy(predictions, labels)
+        loss = tf.reduce_sum(loss)/images.shape[0]    # use images.shape[0] instead of args.batch_size
     
     # Calculate gradients of cost function w.r.t trainable variables and release resources held by GradientTape
     gradients = tape.gradient(loss, model.trainable_variables)
@@ -102,7 +104,8 @@ def train_step(images, labels):
 @tf.function
 def test_step(images, labels):
     predictions = model(images)
-    test_loss = geom_cross_entropy(predictions=predictions, labels=labels)
+    test_loss = geom_cross_entropy(predictions, labels)
+    test_loss = tf.reduce_sum(test_loss)/images.shape[0]  # use images.shape[0] instead of args.batch_size
     test_accuracy.update_state(labels, predictions)
     return test_loss
 

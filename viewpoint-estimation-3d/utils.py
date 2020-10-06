@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from scipy.linalg import logm
 import tensorflow as tf
+from scipy import ndimage
 
 def soft_label_encoding(angle, stdev=10):
     angle = int(angle)
@@ -37,3 +38,23 @@ def geodesic_distance(rotmat1, rotmat2):
     dist = norm_frob / np.sqrt(2.)
     dist_deg = dist * 180./np.pi
     return dist_deg
+
+def normalize(data):
+    min_val = np.min(data)
+    max_val = np.max(data)
+    data = (data - min_val)/(max_val - min_val)
+    data = 255 * data 
+    data = np.uint8(data)
+    return data
+
+def get_view(img3d, theta, tx, ty):
+
+    img3d = ndimage.rotate(img3d, theta, axes=(1, 0), reshape=False, mode="constant", 
+                            cval=np.min(img3d))
+    img = np.sum(img3d, axis=1)
+    img = np.transpose(img)
+    img = normalize(img)
+    img = img[54+ty:454+ty, 63+tx:463+tx]
+    return img
+    
+

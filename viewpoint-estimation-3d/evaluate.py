@@ -77,11 +77,11 @@ manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_t
 
 checkpoint.restore(manager.checkpoints[-1]) 
 
-y_test = [soft_label_encoding(i) for i in range(360)] # replace 10 by 360
+y_test = [soft_label_encoding(i) for i in range(360)]  
 y_test = np.array(y_test)
 x_test = []
-for angle in tqdm(range(360), desc="Generating test data"): # replace 10 by 360
-    img = eng.projection2d(imgpath, angle, "z")
+for theta in tqdm(range(360), desc="Generating test data"):  
+    img = eng.projection2d(imgpath, theta, 0, 0, "z")
     img = np.array(img).astype("uint8")
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.stack((img, img, img), axis=-1)

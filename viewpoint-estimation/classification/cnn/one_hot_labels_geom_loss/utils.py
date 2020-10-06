@@ -6,6 +6,7 @@ import tensorflow as tf
 
 epsilon = 1e-30
 
+
 def rotation_matrix(angle):
     angle = tf.cast(angle, dtype=tf.float32)
     x = angle * math.pi / 180.
@@ -17,7 +18,6 @@ def rotation_matrix(angle):
     row3 = tf.stack([r31, r32, r33])
     r = tf.stack([row1, row2, row3])
     return r
-
 
 def geodesic_distance(angles):
     rotmat1 = rotation_matrix(angles[0])
@@ -31,23 +31,26 @@ def geodesic_distance(angles):
     dist_deg = dist * 180./np.pi
     return dist_deg
 
+def angular_distance(angle1, angle2):
+    dist1 = tf.math.mod(tf.math.abs(angle1 - angle2), 360)
+    dist2 = 360 - dist1
+    dist = tf.where(dist1>180, x=dist2, y=dist1)
+    return dist
+
 def get_weights(gt_class, sigma=3.0):
     k = tf.constant([i for i in range(360)], dtype=tf.float32)
     gt = gt_class * tf.ones(shape=(360))
-    gt_k = tf.stack([k, gt], axis=-1)
-    distances = tf.map_fn(geodesic_distance, gt_k)
+    distances = angular_distance(gt, k)
     weights = tf.math.exp(-distances/sigma)
     return weights
 
-
 def geom_cross_entropy(predictions, labels):
-    
     gt_classes = tf.argmax(labels, axis=-1)
     gt_classes = tf.cast(gt_classes, dtype=tf.float32)
     weights = tf.map_fn(lambda x: get_weights(x), gt_classes)
     pred_log = tf.math.log(predictions + epsilon)
     loss = - weights * pred_log
-    return tf.reduce_mean(loss)
+    return loss
 
 def soft_label_encoding(angle, stdev=10):
     angle = int(angle)
