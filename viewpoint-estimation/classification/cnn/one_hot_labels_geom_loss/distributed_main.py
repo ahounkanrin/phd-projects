@@ -24,19 +24,12 @@ args = get_arguments()
 
 def read_dataset(hf5):
     hf = h5py.File(hf5,'r')
-    x_train = hf.get('x_train')
-    y_train = hf.get('y_train')
-    x_val = hf.get("x_val")
-    y_val = hf.get("y_val")
-    x_test = hf.get('x_test')
-    y_test = hf.get('y_test')
-
-    x_train = np.array(x_train)
-    y_train = np.array(y_train)
-    x_val = np.array(x_val)
-    y_val = np.array(y_val)
-    x_test = np.array(x_test)
-    y_test = np.array(y_test)
+    x_train = np.array(hf.get('x_train'))
+    y_train = np.array(hf.get('y_train'))
+    x_val = np.array(hf.get("x_val"))
+    y_val = np.array(hf.get("y_val"))
+    x_test = np.array(hf.get('x_test'))
+    y_test = np.array(hf.get('y_test'))
     return x_train, y_train, x_val, y_val, x_test, y_test
 
 def preprocess(x, y):
@@ -188,7 +181,7 @@ with strategy.scope():
             # Reset metrics for the next epoch
             test_accuracy.reset_states()
     else:
-        checkpoint.restore(manager.checkpoints[1]) 
+        checkpoint.restore(manager.checkpoints[-1]) 
         pred = []
         for test_images, test_labels in tqdm(test_data.map(preprocess, 
                                             num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
