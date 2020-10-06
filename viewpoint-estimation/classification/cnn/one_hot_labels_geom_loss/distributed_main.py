@@ -37,8 +37,6 @@ def preprocess(x, y):
     x = tf.divide(x, tf.constant(255.0, dtype=tf.float32))
     return x, y
 
-
-
 def train_step(images, labels):
     # All ops involving trainable variables under the GradientTape context manager are recorded for gradient computation
     with tf.GradientTape() as tape:
@@ -52,7 +50,6 @@ def train_step(images, labels):
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     train_accuracy.update_state(labels, predictions)
     return loss
-
 
 def test_step(images, labels):
     predictions = model(images)
