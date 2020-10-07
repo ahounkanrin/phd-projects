@@ -48,7 +48,6 @@ def normalize(data):
     return data
 
 def get_view(img3d, theta, tx, ty):
-
     img3d = ndimage.rotate(img3d, theta, axes=(1, 0), reshape=False, mode="constant", 
                             cval=np.min(img3d))
     img = np.sum(img3d, axis=1)

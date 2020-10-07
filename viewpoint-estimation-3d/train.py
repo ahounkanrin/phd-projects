@@ -167,4 +167,3 @@ for step in range(args.steps):
         test_loss.reset_states()
         test_accuracy.reset_states()
 
-tf.profiler.experimental.stop()

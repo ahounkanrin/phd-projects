@@ -13,11 +13,11 @@ from scipy import ndimage
 
 
 
-
 INPUT_SIZE = (200, 200)
 imgpath1 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii"
 imgpath2 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
 
+print("INFO: loading CT volumes...")
 train_img3d = nib.load(imgpath1).get_fdata().astype(int)
 train_img3d = np.squeeze(train_img3d)
 train_img3d = train_img3d[:,:, :512]
@@ -25,6 +25,7 @@ train_img3d = train_img3d[:,:, :512]
 val_img3d = nib.load(imgpath2).get_fdata().astype(int)
 val_img3d = np.squeeze(val_img3d)
 val_img3d = val_img3d[:,:, :512]
+print("INFO: volumes loaded.")
 
 
 def get_arguments():
@@ -86,9 +87,11 @@ def test_step(images, labels):
     test_loss.update_state(labels, predictions)
     test_accuracy.update_state(labels, predictions)
 
+
+
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "./checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
@@ -97,8 +100,7 @@ epoch = 0
 for step in range(args.steps):
     tic = time.time()
     angles = [random.randint(0, 359) for i in range(args.batch_size)]
-    y_train = [soft_label_encoding(i) for i in angles]
-    y_train = np.array(y_train)
+    y_train = np.array([soft_label_encoding(i) for i in angles])
     x_train = []
     for theta in angles:
         tx = random.randint(-20, 20)
@@ -106,20 +108,16 @@ for step in range(args.steps):
         img = get_view(train_img3d, theta, tx, ty)
         img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
         img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-        #img = tf.keras.preprocessing.image.random_shift(img, wrg=0.1, hrg=0.1, row_axis=0, 
-        #      col_axis=1, channel_axis=2, fill_mode='constant', cval=0.0, interpolation_order=1)
-        #img = tf.keras.preprocessing.image.random_rotation(img, rg=30, row_axis=0, 
-        #      col_axis=1, channel_axis=2, fill_mode='constant', cval=0.0, interpolation_order=1)
         x_train.append(img)
-        #plt.imshow(img, cmap='gray')
-        #plt.show()
+
     x_train = np.array(x_train)
     train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(args.batch_size)
 
     # Save logs with TensorBoard Summary
     if step == 0:
-        train_logdir = "./logs/train"
-        val_logdir = "./logs/val"
+        train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/logs/train"
+        val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/logs/val"
+        
         train_summary_writer = tf.summary.create_file_writer(train_logdir)
         val_summary_writer = tf.summary.create_file_writer(val_logdir)
         tf.summary.trace_on(graph=True)
