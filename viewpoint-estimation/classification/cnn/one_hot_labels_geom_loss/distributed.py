@@ -10,6 +10,7 @@ import time
 from utils import geodesic_distance, geom_cross_entropy, one_hot_encoding
 
 strategy = tf.distribute.MirroredStrategy()
+print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -43,7 +44,7 @@ def train_step(images, labels):
         predictions = model(images)
         loss = geom_cross_entropy(predictions, labels)
         loss = tf.reduce_sum(loss, axis=-1)
-        loss = tf.nn.compute_average_loss(loss, global_batch_size=args.ngpus*images.shape[0])
+        loss = tf.nn.compute_average_loss(loss, global_batch_size=strategy.num_replicas_in_sync*images.shape[0])
         
     # Calculate gradients of cost function w.r.t. trainable variables and release resources held by GradientTape
     gradients = tape.gradient(loss, model.trainable_variables)
@@ -55,7 +56,7 @@ def test_step(images, labels):
     predictions = model(images)
     test_loss = geom_cross_entropy(predictions, labels)
     test_loss = tf.reduce_sum(test_loss, axis=-1)  
-    test_loss = tf.nn.compute_average_loss(test_loss, global_batch_size=args.ngpus*images.shape[0])
+    test_loss = tf.nn.compute_average_loss(test_loss, global_batch_size=strategy.num_replicas_in_sync*images.shape[0])
     test_accuracy.update_state(labels, predictions)
     return test_loss
 
@@ -73,7 +74,7 @@ def distributed_test_step(images, labels):
 with strategy.scope():
 
     # Load dataset
-    print("INFO: Loading dataset...")
+    print("INFO: Processing dataset...")
     INPUT_SIZE = (200, 200)
     DIR = "/scratch/hnkmah001/Datasets/ctfullbody/larger_fov_with_background/"
     x_train, y_train, x_val, y_val, x_test, y_test = read_dataset(DIR+'chest_fov_400x400_sparse_labels.h5')
@@ -104,7 +105,7 @@ with strategy.scope():
     val_data = strategy.experimental_distribute_dataset(val_data)
 
     test_data = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(1)
-    print("INFO: Datasets loaded.")
+    print("INFO: Done!")
 
     baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), include_top=False, weights="imagenet")
     x = baseModel.output
@@ -116,7 +117,7 @@ with strategy.scope():
     #model.summary()
 
     # Define cost function, optimizer and metrics
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=200, 
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=500, 
                                                                 decay_rate=0.96, staircase=True)
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
     train_accuracy = tf.keras.metrics.CategoricalAccuracy(name="train_accuracy")
@@ -178,7 +179,8 @@ with strategy.scope():
             # Reset metrics for the next epoch
             test_accuracy.reset_states()
     else:
-        checkpoint.restore(manager.checkpoints[-1]) 
+        #checkpoint.restore(manager.checkpoints[-1]) 
+        checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation/classification/cnn/one_hot_labels_geom_loss/checkpoints_sigma0_5/ckpt-200")
         pred = []
         for test_images, test_labels in tqdm(test_data.map(preprocess, 
                                             num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):

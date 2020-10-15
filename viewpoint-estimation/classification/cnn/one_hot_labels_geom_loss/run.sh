@@ -9,18 +9,18 @@
 #SBATCH --partition=gpuo
 
 # The line below means you need 1 worker node and a total of 2 cores
-#SBATCH --nodes=1 --ntasks=8
+#SBATCH --nodes=1 --ntasks=12
 
 # The line below indicates the wall time your job will need, 10 hours for example. NB, this is a mandatory directive!
 #SBATCH --time=5-0
 
 # A sensible name for your job, try to keep it short
-#SBATCH --job-name="geom1"
+#SBATCH --job-name="geom_cost_sigma5"
 
 #Modify the lines below for email alerts. Valid type values are NONE, BEGIN, END, FAIL, REQUEUE, ALL 
 #SBATCH --mail-user=hnkmah001@myuct.ac.za
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --gres gpu:kepler:1
+#SBATCH --gres gpu:kepler:4
 
 # The cluster is configured primarily for OpenMPI and PMI. Use srun to launch parallel jobs if your code is parallel aware.
 # To protect the cluster from code that uses shared memory and grabs all available cores the cluster has the following 
@@ -37,6 +37,6 @@
 # Your science stuff goes here...
 
 module load software/TensorFlow-2x-GPU 
-python main.py --is_training=1 
+python distributed.py --is_training=1 --ngpus=4 
 
 

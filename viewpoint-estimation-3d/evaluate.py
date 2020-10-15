@@ -1,21 +1,28 @@
 #import nibabel as nib
 import tensorflow as tf
 import numpy as np
-import matlab.engine
+import nibabel as nib 
 import matplotlib.pyplot as plt
 import cv2 as cv
 import os
 import random
 import argparse
-from utils import rotation_matrix, soft_label_encoding, one_hot_encoding, geodesic_distance
+from utils import (rotation_matrix, soft_label_encoding,
+                   get_view, one_hot_encoding, geodesic_distance)
 from tqdm import tqdm
 import time
 
-eng = matlab.engine.start_matlab()
 
-INPUT_SIZE = (256, 256)
-#DATA_DIR = "/home/anicet/Datasets/ctfullbody/"
-imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
+INPUT_SIZE = (200, 200)
+#imgpath1 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii"
+imgpath2 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
+
+print("INFO: loading CT volumes...")
+
+val_img3d = nib.load(imgpath2).get_fdata().astype(int)
+val_img3d = np.squeeze(val_img3d)
+val_img3d = val_img3d[:,:, :512]
+print("INFO: volumes loaded.")
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -31,14 +38,14 @@ def preprocess(x, y):
     return x, y
 
 # Define the model
-baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), include_top=False, weights="imagenet")
+baseModel = tf.keras.applications.InceptionV3(input_shape=(200, 200, 3), include_top=False, weights="imagenet")
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
 x = tf.keras.layers.Dense(1024, activation="relu")(x)
 outputs = tf.keras.layers.Dense(360, activation="softmax")(x)
 
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
-model.summary()
+#model.summary()
 
 # Define cost function, optimizer and metrics
 loss_object = tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
@@ -81,10 +88,9 @@ y_test = [soft_label_encoding(i) for i in range(360)]
 y_test = np.array(y_test)
 x_test = []
 for theta in tqdm(range(360), desc="Generating test data"):  
-    img = eng.projection2d(imgpath, theta, 0, 0, "z")
-    img = np.array(img).astype("uint8")
+    img = get_view(val_img3d, theta, 0, 0)
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
-    img = np.stack((img, img, img), axis=-1)
+    img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
     x_test.append(img)
 x_test = np.array(x_test)
 test_data = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(1)
