@@ -1,18 +1,13 @@
-Epoch 6:
-
-Median Error = 10.0000
+Median Error = 16.0000
 Accuracy at theta = 0 is: 0.0000
-Accuracy at theta = 5 is: 0.2833
-Accuracy at theta = 10 is: 0.5111
-Accuracy at theta = 15 is: 0.6500
-Accuracy at theta = 20 is: 0.6806
-Accuracy at theta = 25 is: 0.7111
-Accuracy at theta = 30 is: 0.7167
-Accuracy at theta = 35 is: 0.7333
-Accuracy at theta = 40 is: 0.7444
-Accuracy at theta = 45 is: 0.7583
-Accuracy at theta = 50 is: 0.7667
-Accuracy at theta = 55 is: 0.7750
-
-
-
+Accuracy at theta = 5 is: 0.2389
+Accuracy at theta = 10 is: 0.4000
+Accuracy at theta = 15 is: 0.4833
+Accuracy at theta = 20 is: 0.5389
+Accuracy at theta = 25 is: 0.5833
+Accuracy at theta = 30 is: 0.6111
+Accuracy at theta = 35 is: 0.6389
+Accuracy at theta = 40 is: 0.6639
+Accuracy at theta = 45 is: 0.6861
+Accuracy at theta = 50 is: 0.6944
+Accuracy at theta = 55 is: 0.7139

@@ -1,31 +1,22 @@
 import tensorflow as tf
 import numpy as np
+import matlab.engine
 import matplotlib.pyplot as plt
 import cv2 as cv
 import os
 import random
 import argparse
-from utils import get_view, rotation_matrix, soft_label_encoding, one_hot_encoding
+from utils import rotation_matrix, soft_label_encoding, one_hot_encoding
 from tqdm import tqdm
 import time
-import nibabel as nib
-from scipy import ndimage
+#import nibabel as nib
 
 
+eng = matlab.engine.start_matlab()
 
 INPUT_SIZE = (200, 200)
 imgpath1 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii"
 imgpath2 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
-
-print("INFO: loading CT volumes...")
-train_img3d = nib.load(imgpath1).get_fdata().astype(int)
-train_img3d = np.squeeze(train_img3d)
-train_img3d = train_img3d[:,:, :512]
-
-val_img3d = nib.load(imgpath2).get_fdata().astype(int)
-val_img3d = np.squeeze(val_img3d)
-val_img3d = val_img3d[:,:, :512]
-print("INFO: volumes loaded.")
 
 
 def get_arguments():
@@ -51,6 +42,7 @@ x = tf.keras.layers.Dense(1024, activation="relu")(x)
 outputs = tf.keras.layers.Dense(360, activation="softmax")(x)
 
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
+
 
 # Define cost function, optimizer and metrics
 loss_object = tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
@@ -82,11 +74,9 @@ def test_step(images, labels):
     test_loss.update_state(labels, predictions)
     test_accuracy.update_state(labels, predictions)
 
-
-
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/checkpoints/"
+checkpoint_dir = "./checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
@@ -94,29 +84,33 @@ manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_t
 epoch = 0
 for step in range(args.steps):
     tic = time.time()
-    train_viewpoints = [random.randint(0, 359) for i in range(args.batch_size)]
-    y_train = np.array([soft_label_encoding(i) for i in train_viewpoints])
+    angles = [random.randint(0, 359) for i in range(args.batch_size)]
+    y_train = [soft_label_encoding(i) for i in angles]
+    y_train = np.array(y_train)
     x_train = []
-    for theta in train_viewpoints:
+    for theta in angles:
         tx = random.randint(-20, 20)
         ty = random.randint(-20, 20)
-        img = get_view(train_img3d, theta, tx, ty)
+        img = eng.projection2d(imgpath1, theta, tx, ty, "z")
+        img = np.array(img).astype("uint8")
         img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
         img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
+        #img = tf.keras.preprocessing.image.random_rotation(img, rg=30, row_axis=0, 
+        #      col_axis=1, channel_axis=2, fill_mode='constant', cval=0.0, interpolation_order=1)
         x_train.append(img)
-
+        #plt.imshow(img, cmap='gray')
+        #plt.show()
     x_train = np.array(x_train)
     train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(args.batch_size)
     toc1 = time.time()
-
     # Save logs with TensorBoard Summary
     if step == 0:
-        train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/logs/train"
-        val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/logs/val"
+        train_logdir = "./logs/train"
+        val_logdir = "./logs/val"
         
         train_summary_writer = tf.summary.create_file_writer(train_logdir)
         val_summary_writer = tf.summary.create_file_writer(val_logdir)
-    
+
     for images, labels in train_data.map(preprocess, num_parallel_calls=tf.data.experimental.AUTOTUNE):
         train_step(images, labels)
         step += 1
@@ -125,9 +119,9 @@ for step in range(args.steps):
             tf.summary.scalar("accuracy", train_accuracy.result(), step=step)
             tf.summary.image("image", images, step=step, max_outputs=2)
         toc2 = time.time()
-        print("Step {}: \t loss = {:.4f} \t acc = {:.4f} \t data: {:.2f} seconds \t training: {:.2f} seconds".format(step, 
+        print("Step {}: \t loss = {:.4f} \t acc = {:.4f} \t data: {:.2f} seconds \t training:  {:.2f} seconds".format(step, 
             train_loss.result(), train_accuracy.result(), toc1-tic, toc2-toc1))
-        
+        # Reset metrics for the next iteration
         train_loss.reset_states()
         train_accuracy.reset_states()
 
@@ -139,7 +133,8 @@ for step in range(args.steps):
         y_val = np.array(y_val)
         x_val = []
         for theta in tqdm(val_views, desc="Generating validation data"):
-            img = get_view(val_img3d, theta, 0, 0)
+            img = eng.projection2d(imgpath2, theta, 0, 0, "z")
+            img = np.array(img).astype("uint8")
             img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
             img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
             x_val.append(img)
