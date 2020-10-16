@@ -14,25 +14,6 @@ from multiprocessing import Pool, cpu_count
 
 
 
-INPUT_SIZE = (200, 200)
-imgpath1 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii"
-imgpath2 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
-
-print("INFO: loading CT volumes...")
-train_img3d = nib.load(imgpath1).get_fdata().astype(int)
-train_img3d = np.squeeze(train_img3d)
-train_img3d = train_img3d[:,:, :512]
-
-val_img3d = nib.load(imgpath2).get_fdata().astype(int)
-val_img3d = np.squeeze(val_img3d)
-val_img3d = val_img3d[:,:, :512]
-print("INFO: volumes loaded.")
-
-x1 = [(theta, tx, 0) for theta in range(360) for tx in range(-20, 21)]
-x2 = [(theta, 0, ty) for theta in range(360) for ty in range(-20, 21) if ty!=0]
-xtrain = x1 + x2 
-xval = [(theta, 0, 0) for theta in range(360)]
-
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=40, help="Batch size")
@@ -68,15 +49,35 @@ def get_val_views(viewpoint):
     label = soft_label_encoding(theta)
     return img, label
 
-# Define the model
 
+# Load data
+INPUT_SIZE = (200, 200)
+imgpath1 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii"
+imgpath2 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
+
+print("INFO: loading CT volumes...")
+train_img3d = nib.load(imgpath1).get_fdata().astype(int)
+train_img3d = np.squeeze(train_img3d)
+train_img3d = train_img3d[:,:, :512]
+
+val_img3d = nib.load(imgpath2).get_fdata().astype(int)
+val_img3d = np.squeeze(val_img3d)
+val_img3d = val_img3d[:,:, :512]
+print("Done!")
+
+x1 = [(theta, tx, 0) for theta in range(360) for tx in range(-20, 21)]
+x2 = [(theta, 0, ty) for theta in range(360) for ty in range(-20, 21) if ty!=0]
+xtrain = x1 + x2 
+xval = [(theta, 0, 0) for theta in range(360)]
+
+
+# Define the model
 baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), 
                                               include_top=False, weights="imagenet")
 x = baseModel.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
 x = tf.keras.layers.Dense(1024, activation="relu")(x)
 outputs = tf.keras.layers.Dense(360, activation="softmax")(x)
-
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
 
 # Define cost function, optimizer and metrics
@@ -85,9 +86,7 @@ lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate,
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
 train_loss = tf.keras.metrics.CategoricalCrossentropy(name="train_loss")
-#test_loss = tf.keras.metrics.CategoricalCrossentropy(name="test_loss")
 train_accuracy = tf.keras.metrics.CategoricalAccuracy(name="train_accuracy")
-#test_accuracy = tf.keras.metrics.CategoricalAccuracy(name="test_accuracy")
 
 
 @tf.function
@@ -106,10 +105,7 @@ def train_step(images, labels):
 @tf.function
 def test_step(images, labels):
     predictions = model(images)
-    #test_loss.update_state(labels, predictions)
-    #test_accuracy.update_state(labels, predictions)
     return predictions
-
 
 
 # Define checkpoint manager to save model weights
@@ -134,14 +130,14 @@ for epoch in range(args.epochs):
         x_train = []
         y_train = []
         if len(xtrain_epoch) >= cpu_count():
-            train_batch_viewpoints = random.sample(xtrain_epoch, cpu_count())
+            train_viewpoints_batch = random.sample(xtrain_epoch, cpu_count())
         else:
-            train_batch_viewpoints = xtrain_epoch
-        for example in train_batch_viewpoints:
+            train_viewpoints_batch = xtrain_epoch
+        for example in train_viewpoints_batch:
             xtrain_epoch.remove(example)
         
         with Pool() as pool:
-            train_batch = pool.map(get_train_views, train_batch_viewpoints)
+            train_batch = pool.map(get_train_views, train_viewpoints_batch)
 
         train_batch = np.array(train_batch)
         for i in range(len(train_batch)):
@@ -181,18 +177,18 @@ for epoch in range(args.epochs):
     y_val = []
     while len(xval_epoch) > 0:
         if len(xval_epoch) >= cpu_count():
-            val_batch_viewpoints = xval_epoch[:cpu_count()]
+            val_viewpoints_batch = xval_epoch[:cpu_count()]
         else:
-            val_batch_viewpoints = xval_epoch
+            val_viewpoints_batch = xval_epoch
         
         with Pool() as pool:
-            val_batch = pool.map(get_val_views, val_batch_viewpoints)
+            val_batch = pool.map(get_val_views, val_viewpoints_batch)
         val_batch = np.array(val_batch)
         for i in range(len(val_batch)):
             x_val.append(val_batch[i, 0])
             y_val.append(val_batch[i, 1])
         
-        for example in val_batch_viewpoints:
+        for example in val_viewpoints_batch:
             xval_epoch.remove(example)
 
     x_val = np.array(x_val)
@@ -217,7 +213,4 @@ for epoch in range(args.epochs):
     template = "Epoch {} \t Validation Accuracy: {:.4f}, ckpt {}\n\n"
     print(template.format(epoch, val_acc, ckpt_path))
     
-    # Reset metrics for the next epoch
-    #test_loss.reset_states()
-    #test_accuracy.reset_states()
-
+    
