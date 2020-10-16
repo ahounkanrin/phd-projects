@@ -5,7 +5,7 @@ import cv2 as cv
 import os
 import random
 import argparse
-from utils import get_view, rotation_matrix, soft_label_encoding, one_hot_encoding
+from utils import get_view2, rotation_matrix, soft_label_encoding, one_hot_encoding
 from tqdm import tqdm
 import time
 import nibabel as nib
@@ -100,7 +100,7 @@ for step in range(args.steps):
     for theta in train_viewpoints:
         tx = random.randint(-20, 20)
         ty = random.randint(-20, 20)
-        img = get_view(train_img3d, theta, tx, ty)
+        img = get_view2(train_img3d, theta, tx, ty)
         img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
         img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
         x_train.append(img)
