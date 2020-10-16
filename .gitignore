@@ -11,3 +11,4 @@ viewpoint-estimation/classification/cnn/soft_labels/__pycache__/
 viewpoint-estimation/classification/cnn/soft_labels2/__pycache__/
 viewpoint-estimation/classification/knn/__pycache__/
 viewpoint-estimation/regression/cnn/__pycache__/
+viewpoint-estimation/classification/cnn/one_hot_labels_geom_loss/__pycache__/
