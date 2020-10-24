@@ -146,8 +146,8 @@ if args.is_training:
         test_accuracy.reset_states()
 else:
 
-    checkpoint.restore(manager.checkpoints[-1])
-    #checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation/classification/cnn/soft_labels/checkpoints/ckpt-20") # manager.checkpoints[-1]
+    #checkpoint.restore(manager.checkpoints[-1])
+    checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation/classification/cnn/soft_labels/checkpoints/ckpt-20") # manager.checkpoints[-1]
 
     pred = []
     for test_images, test_labels in tqdm(test_data.map(preprocess, 
