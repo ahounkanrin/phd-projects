@@ -5,27 +5,13 @@ from scipy.linalg import logm
 import tensorflow as tf
 from scipy import ndimage
 
-def rotate_plane(plane, rotationMatrix):
-	rotatedPlane = np.matmul(plane, rotationMatrix)
-	return rotatedPlane
-
-def normalize(img):
-    min_val = np.min(img)
-    max_val = np.max(img)
-    img = (img - min_val)/(max_val - min_val)
-    img = 255 * img 
-    img = 255 - img  # use 255 for background pixel values
-    img = np.uint8(img)
-    return img
-
-"""
 def normalize(data):
     min_val = np.min(data)
     max_val = np.max(data)
     data = (data - min_val)/(max_val - min_val)
     data = 255 * data 
     data = np.uint8(data)
-    return data"""
+    return data
 
 def get_view(img3d, theta):
     #img3d = ndimage.rotate(img3d, theta, axes=(1, 0), reshape=False, mode="constant", 
@@ -88,14 +74,6 @@ def geodesic_distance(angles):
     dist = norm_frob / np.sqrt(2.)
     dist_deg = dist * 180./np.pi
     return dist_deg
-
-def preprocess(x, y):
-    x = tf.cast(x, dtype=tf.float32)
-    x = tf.divide(x, tf.constant(255.0, dtype=tf.float32))
-    return x, y
-
-
-
 
 
     
