@@ -22,9 +22,9 @@ medErr_soft_classification_100x100 = 15.5
 acc_soft_classification_100x100 = [0.0167, 0.2528, 0.4083, 0.4944, 0.5083, 0.5167, 0.5250, 0.5333, 0.5389, 0.5500, 0.5556, 0.5833]
 
 plt.figure(figsize=[8, 5])
-plt.title("Azimuth estimation - Accuracy")
+#plt.title("Azimuth estimation - Accuracy")
 plt.ylabel("Accuracy")
-plt.xlabel("Maximum error (degrees)")
+plt.xlabel("Threshold (degrees)")
 
 plt.plot(thresholds, acc_regression, label="Regression")
 plt.plot(thresholds, acc_knn, label="Nearest Neighbor")
@@ -36,9 +36,9 @@ plt.grid(True)
 plt.savefig("azimuth_accuracy.png")
 
 plt.figure(figsize=[8, 5])
-plt.title("Azimuth estimation accuracy- Multiscale input size")
+#plt.title("Azimuth estimation accuracy- Multiscale input size")
 plt.ylabel("Accuracy")
-plt.xlabel("Maximum error (degrees)")
+plt.xlabel("Threshold (degrees)")
 
 plt.plot(thresholds, acc_soft_classification, label=r"$400 \times 400$")
 plt.plot(thresholds, acc_soft_classification_300x300, label=r"$300 \times 300$")
@@ -54,7 +54,7 @@ medErrs = [medErr_regression, medErr_knn, medErr_hard_classification, medErr_sof
 medErrs_multiscale = [medErr_soft_classification, medErr_soft_classification_300x300, medErr_soft_classification_200x200, medErr_soft_classification_100x100]
 
 plt.figure(figsize=[7, 4])
-plt.title("Azimuth estimation - Median Error")
+#plt.title("Azimuth estimation - Median Error")
 plt.ylabel("Median Error (degrees)")
 plt.bar(0, medErrs[0], color="royalblue", label="Regression")
 plt.bar(1, medErrs[1], color="orange", label="Nearest neighbor")
@@ -67,7 +67,7 @@ plt.legend(loc="upper right")
 plt.savefig("azimuth_mederr.png")
 
 plt.figure(figsize=[4, 4])
-plt.title("Azimuth estimation Median Error - Multiscale input size")
+#plt.title("Azimuth estimation Median Error - Multiscale input size")
 plt.ylabel("Median Error (degrees)")
 plt.bar(0, medErrs_multiscale[0], color="b", label=r"$400 \times 400$")
 plt.bar(1, medErrs_multiscale[1], color="orange", label=r"$300\times 300$")

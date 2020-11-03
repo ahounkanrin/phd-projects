@@ -41,7 +41,7 @@ acc_sigma0_5 = [0.0000, 0.2389, 0.4000, 0.4833, 0.5389, 0.5833, 0.6111, 0.6389, 
 plt.figure(figsize=[8, 5])
 #plt.title("Accuracy")
 plt.ylabel("Accuracy")
-plt.xlabel("Maximum error (degrees)")
+plt.xlabel("Threshold (degrees)")
 plt.plot(thresholds, acc_sigma0_5, label=r"$\sigma = 0.5$")
 plt.plot(thresholds, acc_sigma1, label=r"$\sigma = 1$")
 #plt.plot(thresholds, acc_sigma2, label=r"$\sigma = 2$")
