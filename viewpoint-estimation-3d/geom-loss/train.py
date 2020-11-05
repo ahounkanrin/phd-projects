@@ -24,8 +24,6 @@ def get_arguments():
 args = get_arguments()
 
 def preprocess(x, y):
-    #x = tf.keras.preprocessing.image.random_rotation(x, rg=10, row_axis=0, col_axis=1, channel_axis=2, 
-    #                   fill_mode='constant', cval=0, interpolation_order=1)
     x = tf.cast(x, dtype=tf.float32)
     x = tf.divide(x, tf.constant(255.0, dtype=tf.float32))
     return x, y
@@ -91,6 +89,8 @@ def render_train_view(viewpoint):
     img = img[54+tx:454+tx, 63+ty:463+ty]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
+    img = tf.keras.preprocessing.image.random_rotation(img, rg=10, row_axis=0, col_axis=1, channel_axis=2, 
+                       fill_mode='constant', cval=0, interpolation_order=1)
     label = one_hot_encoding(theta)
     return img, label
 
@@ -151,7 +151,7 @@ def test_step(images, labels):
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=20)
@@ -188,8 +188,8 @@ for epoch in range(args.epochs):
         
         # Save logs with TensorBoard Summary
         if step == 0:
-            train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss/logs/train"
-            val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss/logs/val"
+            train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation/logs/train"
+            val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation/logs/val"
             train_summary_writer = tf.summary.create_file_writer(train_logdir)
             val_summary_writer = tf.summary.create_file_writer(val_logdir)
         
