@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 import time
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import interpn
+from scipy.fft import fftn, fftshift, ifft2
 import cv2 as cv
 from multiprocessing import Pool, cpu_count
 import random
@@ -28,26 +29,35 @@ def preprocess(x, y):
     x = tf.divide(x, tf.constant(255.0, dtype=tf.float32))
     return x, y
 
-def rotation_matrix(theta):
+def Rx(theta):
+    x = theta * np.pi / 180.
+    r11, r12, r13 = 1., 0. , 0.
+    r21, r22, r23 = 0., np.cos(x), -np.sin(x)
+    r31, r32, r33 = 0., np.sin(x), np.cos(x)
+    return np.array([[r11, r12, r13], [r21, r22, r23], [r31, r32, r33]])
+
+def Ry(theta):
+    x = theta * np.pi / 180.
+    r11, r12, r13 = np.cos(x), 0., np.sin(x)
+    r21, r22, r23 = 0., 1., 0.
+    r31, r32, r33 = -np.sin(x), 0, np.cos(x)
+    return np.array([[r11, r12, r13], [r21, r22, r23], [r31, r32, r33]])
+
+def Rz(theta):
     x = theta * np.pi / 180.
     r11, r12, r13 = np.cos(x), -np.sin(x), 0.
     r21, r22, r23 = np.sin(x), np.cos(x), 0.
     r31, r32, r33 = 0., 0., 1.
-    r = np.array([[r11, r12, r13], [r21, r22, r23], [r31, r32, r33]])
-    return r
+    return np.array([[r11, r12, r13], [r21, r22, r23], [r31, r32, r33]])
 
 def rotate_plane(plane, rotationMatrix):
 	rotatedPlane = np.matmul(rotationMatrix, plane)
 	return rotatedPlane
 
 def normalize(img):
-    min_val = np.min(img)
-    max_val = np.max(img)
-    img = (img - min_val)/(max_val - min_val)
+    img = (img - np.min(img))/(np.max(img) - np.min(img))
     img = 255 * img 
-    img = 255 - img  # use 255 for background pixel values
-    img = np.uint8(img)
-    return img
+    return np.uint8(img)
 
 #print("number of cpus", cpu_count())
 # Load ct volume
@@ -58,6 +68,7 @@ print("INFO: loading CT volume...")
 ctVolume = nib.load(imgpath1).get_fdata().astype(int)
 ctVolume = np.squeeze(ctVolume)
 voi = ctVolume[:,:, :N] # Extracts volume of interest from the full body ct volume
+voi = normalize(voi)    # Rescale CT numbers between 0 and 255
 print("Done.") 
 
 voiShifted = np.fft.fftshift(voi)
@@ -71,7 +82,6 @@ x_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
 y_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
 z_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
 
-train_interpolating_function = RegularGridInterpolator((x_axis, y_axis, z_axis), voiFFTShifted)
 projectionPlane = np.array([[xi, 0, zi] for xi in x_axis for zi in z_axis])
 projectionPlane = np.reshape(projectionPlane, (N, N, 3, 1), order="F")
 
@@ -79,18 +89,17 @@ def render_train_view(viewpoint):
     theta = viewpoint[0]
     tx = viewpoint[1]
     ty = viewpoint[2]
-    rotationMatrix = rotation_matrix(theta)
-    projectionSlice = rotate_plane(projectionPlane, rotationMatrix)
-    projectionSlice = np.squeeze(projectionSlice)
-    projectionSliceInterpolated =  train_interpolating_function(projectionSlice)     
-    projectionSliceIFFT = np.abs(np.fft.ifft2(projectionSliceInterpolated))
-    img = np.fft.fftshift(projectionSliceIFFT)
+    rotationMatrix = Rz(theta)
+    projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
+    projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=voiFFTShifted, xi=projectionSlice, method="linear",
+                                    bounds_error=False, fill_value=0)      
+    img = np.abs(fftshift(ifft2(projectionSliceFFT)))
     img = normalize(img)
     img = img[54+tx:454+tx, 63+ty:463+ty]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-    img = tf.keras.preprocessing.image.random_rotation(img, rg=10, row_axis=0, col_axis=1, channel_axis=2, 
-                       fill_mode='constant', cval=0, interpolation_order=1)
+    #img = tf.keras.preprocessing.image.random_rotation(img, rg=10, row_axis=0, col_axis=1, channel_axis=2, 
+    #                   fill_mode='constant', cval=0, interpolation_order=1)
     label = one_hot_encoding(theta)
     return img, label
 
@@ -101,9 +110,7 @@ xtrainval = x1 + x2
 xval = random.sample(xtrainval, len(xtrainval)//4)
 for val_example in xval:
         xtrainval.remove(val_example)
-xtrain = xtrainval
-#xval = [(theta, 0, 0) for theta in range(360)]
-
+xtrain = xtrainval.copy()
 
 # Define the model
 baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), 
@@ -127,31 +134,31 @@ test_accuracy = tf.keras.metrics.CategoricalAccuracy(name="test_accuracy")
 @tf.function
 def train_step(images, labels):
     # All ops involving trainable variables under the GradientTape context manager are recorded for gradient computation
-    with tf.device("/gpu:1"):
-        with tf.GradientTape() as tape:
-            predictions = model(images)
-            loss = geom_cross_entropy(predictions, labels)
-            loss = tf.reduce_sum(loss)/images.shape[0]    # use images.shape[0] instead of args.batch_size
-        
-        # Calculate gradients of cost function w.r.t trainable variables and release resources held by GradientTape
-        gradients = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        train_accuracy.update_state(labels, predictions)
+    #with tf.device("/gpu:1"):
+    with tf.GradientTape() as tape:
+        predictions = model(images)
+        loss = geom_cross_entropy(predictions, labels)
+        loss = tf.reduce_sum(loss)/images.shape[0]    # use images.shape[0] instead of args.batch_size
+    
+    # Calculate gradients of cost function w.r.t trainable variables and release resources held by GradientTape
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    train_accuracy.update_state(labels, predictions)
     return loss
 
 @tf.function
 def test_step(images, labels):
-    with tf.device("/gpu:1"):
-        predictions = model(images)
-        test_loss = geom_cross_entropy(predictions, labels)
-        test_loss = tf.reduce_sum(test_loss)/images.shape[0]  # use images.shape[0] instead of args.batch_size
-        test_accuracy.update_state(labels, predictions)
+    #with tf.device("/gpu:1"):
+    predictions = model(images)
+    test_loss = geom_cross_entropy(predictions, labels)
+    test_loss = tf.reduce_sum(test_loss)/images.shape[0]  # use images.shape[0] instead of args.batch_size
+    test_accuracy.update_state(labels, predictions)
     return test_loss
 
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=20)
@@ -188,8 +195,8 @@ for epoch in range(args.epochs):
         
         # Save logs with TensorBoard Summary
         if step == 0:
-            train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation/logs/train"
-            val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation/logs/val"
+            train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss/logs/train"
+            val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss/logs/val"
             train_summary_writer = tf.summary.create_file_writer(train_logdir)
             val_summary_writer = tf.summary.create_file_writer(val_logdir)
         

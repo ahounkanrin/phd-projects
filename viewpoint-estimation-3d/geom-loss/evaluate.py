@@ -12,7 +12,8 @@ import nibabel as nib
 from scipy import ndimage
 from multiprocessing import Pool, cpu_count
 import pandas as pd
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import interpn
+from scipy.fft import fftn, fftshift, ifft2
 
 random.seed(0)
 
@@ -33,24 +34,20 @@ def rotate_plane(plane, rotationMatrix):
 	return np.matmul(rotationMatrix, plane)
 
 def normalize(img):
-    min_val = np.min(img)
-    max_val = np.max(img)
-    img = (img - min_val)/(max_val - min_val)
+    img = (img - np.min(img))/(np.max(img) - np.min(img))
     img = 255 * img 
-    img = 255 - img  # use 255 for background pixel values
     return np.uint8(img)
-
 
 # Load ct volume
 INPUT_SIZE = (200, 200)
-#imgpath1 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii"
-imgpath2 = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
+imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
 N = 512 
 print("INFO: loading CT volume...")
 tic_load = time.time()
-test_ctVolume = nib.load(imgpath2).get_fdata().astype(int)
+test_ctVolume = nib.load(imgpath).get_fdata().astype(int)
 test_ctVolume = np.squeeze(test_ctVolume)
 test_voi = test_ctVolume[:,:, :N] # Extracts volume of interest from the full body ct volume
+test_voi = normalize(test_voi)    # Rescale CT numbers between 0 and 255
 toc_load = time.time()
 print("Done after {:.2f} seconds.".format(toc_load - tic_load)) 
 
@@ -67,7 +64,6 @@ x_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
 y_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
 z_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
 
-test_interpolating_function = RegularGridInterpolator((x_axis, y_axis, z_axis), test_voiFFTShifted)
 projectionPlane = np.array([[xi, 0, zi] for xi in x_axis for zi in z_axis])
 projectionPlane = np.reshape(projectionPlane, (N, N, 3, 1), order="F")
 
@@ -76,11 +72,10 @@ def render_test_view(viewpoint):
     tx = viewpoint[1]
     ty = viewpoint[2]
     rotationMatrix = rotation_matrix(theta)
-    projectionSlice = rotate_plane(projectionPlane, rotationMatrix)
-    projectionSlice = np.squeeze(projectionSlice)
-    projectionSliceInterpolated =  test_interpolating_function(projectionSlice)     
-    projectionSliceIFFT = np.abs(np.fft.ifft2(projectionSliceInterpolated))
-    img = np.fft.fftshift(projectionSliceIFFT)
+    projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
+    projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=test_voiFFTShifted, xi=projectionSlice, method="linear",
+                                    bounds_error=False, fill_value=0)      
+    img = np.abs(fftshift(ifft2(projectionSliceFFT)))
     img = normalize(img)
     img = img[54+tx:454+tx, 63+ty:463+ty]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
@@ -115,7 +110,7 @@ def test_step(images, labels):
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
