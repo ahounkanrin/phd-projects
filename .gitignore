@@ -13,3 +13,4 @@ viewpoint-estimation/classification/knn/__pycache__/
 viewpoint-estimation/regression/cnn/__pycache__/
 viewpoint-estimation/classification/cnn/one_hot_labels_geom_loss/__pycache__/
 DRR/FVR/*.png
+DRR/MATLAB-FVR
