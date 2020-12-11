@@ -5,7 +5,7 @@ import cv2 as cv
 import os
 import random
 import argparse
-from utils import rotation_matrix, soft_label_encoding,  geodesic_distance
+from utils import rotation_matrix, one_hot_encoding,  geodesic_distance
 from tqdm import tqdm
 import time
 import nibabel as nib
@@ -16,6 +16,7 @@ from scipy.interpolate import interpn
 from scipy.fft import fftn, fftshift, ifft2
 
 random.seed(0)
+min_ctnumber = -1024
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -47,7 +48,9 @@ tic_load = time.time()
 test_ctVolume = nib.load(imgpath).get_fdata().astype(int)
 test_ctVolume = np.squeeze(test_ctVolume)
 test_voi = test_ctVolume[:,:, :N] # Extracts volume of interest from the full body ct volume
-test_voi = normalize(test_voi)    # Rescale CT numbers between 0 and 255
+#test_voi = normalize(test_voi)    # Rescale CT numbers between 0 and 255
+test_voi = test_voi - min_ctnumber
+test_voi = np.pad(test_voi, N//2, "constant", constant_values=0)
 toc_load = time.time()
 print("Done after {:.2f} seconds.".format(toc_load - tic_load)) 
 
@@ -60,12 +63,12 @@ print("3D FFT computed in {:.2f} seconds.".format(toc_fft - tic_fft))
 
 
 # Rotation and Interpolation of the projection slice from the 3D FFT volume
-x_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
-y_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
-z_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
+x_axis = np.linspace(-N+0.5, N-0.5, 2*N)
+y_axis = np.linspace(-N+0.5, N-0.5, 2*N)
+z_axis = np.linspace(-N+0.5, N-0.5, 2*N)
 
 projectionPlane = np.array([[xi, 0, zi] for xi in x_axis for zi in z_axis])
-projectionPlane = np.reshape(projectionPlane, (N, N, 3, 1), order="F")
+projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
 
 def render_test_view(viewpoint):
     theta = viewpoint[0]
@@ -74,13 +77,14 @@ def render_test_view(viewpoint):
     rotationMatrix = rotation_matrix(theta)
     projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
     projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=test_voiFFTShifted, xi=projectionSlice, method="linear",
-                                    bounds_error=False, fill_value=0)      
+                                    bounds_error=False)      
     img = np.abs(fftshift(ifft2(projectionSliceFFT)))
+    img = img[N//2:N+N//2, N//2:N+N//2]
     img = normalize(img)
-    img = img[54+tx:454+tx, 63+ty:463+ty]
+    #img = img[54+tx:454+tx, 63+ty:463+ty]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-    label = soft_label_encoding(theta)
+    label = one_hot_encoding(theta)
     return img, label
 
 xtest = [(theta, 0, 0) for theta in range(360)]
@@ -110,12 +114,12 @@ def test_step(images, labels):
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-in-plane-rotation2/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
 
-checkpoint.restore(manager.checkpoints[-1]) 
+checkpoint.restore(manager.checkpoints[-1])  
 #checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/ckpt-2")    
 xtest_epoch = xtest.copy()
 x_test = []

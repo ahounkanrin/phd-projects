@@ -35,7 +35,7 @@ train_img3d = train_img3d[:,:, :512]
 print("INFO: volumes loaded after {:.2f} seconds".format(time.time()-tic1))
 
 
-for theta in range(0, 360, 10):
+for theta in range(0, 100, 10):
     tic2 = time.time()
     img3d = tf.keras.preprocessing.image.apply_affine_transform(train_img3d, theta=theta, tx=0, ty=0, shear=0, zx=1, zy=1, 
                     row_axis=0, col_axis=1, channel_axis=2, fill_mode='constant', cval=np.min(train_img3d), order=1)

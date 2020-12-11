@@ -6,7 +6,7 @@ from scipy.interpolate import interpn
 from scipy.fft import fftn, fftshift, ifft2
 
 np.random.seed(0)
-
+min_ctnumber = -1024
 def Rx(theta):
     x = theta * np.pi / 180.
     r11, r12, r13 = 1., 0. , 0.
@@ -45,27 +45,31 @@ if __name__ == "__main__":
     ctVolume = nib.load(imgpath).get_fdata().astype(int)
     ctVolume = np.squeeze(ctVolume)
     voi = ctVolume[:,:, :N] # Extracts volume of interest (512 x 512 x 512) from the full body ct volume (512 x 512 x 3000)
-    voi = normalize(voi)    # Rescale CT numbers between 0 and 255
+    voi = voi - min_ctnumber # shift to avoid negative CT numbers
+    voi = np.pad(voi, N//2, "constant", constant_values=0)
     toc_load = time.time()
     print("Done after {:.2f} seconds.".format(toc_load - tic_load)) 
 
     tic_fft = time.time()
     voiShifted = fftshift(voi)
+    del voi
     voiFFT = fftn(voiShifted)
+    del voiShifted
     voiFFTShifted = fftshift(voiFFT)
+    del voiFFT
     toc_fft = time.time()
     print("3D FFT computed in {:.2f} seconds.".format(toc_fft - tic_fft))
 
 
     # Rotation and Interpolation of the projection slice from the 3D FFT volume
 
-    x = np.linspace(-N//2+0.5, N//2-0.5, N)
-    y = np.linspace(-N//2+0.5, N//2-0.5, N)
-    z = np.linspace(-N//2+0.5, N//2-0.5, N)
+    x = np.linspace(-N+0.5, N-0.5, 2*N)
+    y = np.linspace(-N+0.5, N-0.5, 2*N)
+    z = np.linspace(-N+0.5, N-0.5, 2*N)
 
 
     projectionPlane = np.array([[xi, 0, zi] for xi in x for zi in z])
-    projectionPlane = np.reshape(projectionPlane, (N, N, 3, 1), order="F")
+    projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
 
     def render_view(viewpoint):
         theta_x = 0 #np.random.randint(-10, 10)
@@ -74,19 +78,20 @@ if __name__ == "__main__":
         tx = viewpoint[1]
         ty = viewpoint[2]
         tic_rendering = time.time()
-        rotationMatrix = Rx(theta_x) @ Ry(theta_y) @ Rz(theta_z)
+        rotationMatrix = Rx(-theta_x) @ Ry(-theta_y) @ Rz(-theta_z) # Rotate the projection plane clockwise to get a counter clockwise projections of the ct volume
         projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
         projectionSliceFFT = interpn(points=(x, y, z), values=voiFFTShifted, xi=projectionSlice, method="linear",
-                                     bounds_error=False, fill_value=0)      
+                                     bounds_error=False)      
         img = np.abs(fftshift(ifft2(projectionSliceFFT)))
+        img = img[N//2:N+N//2, N//2:N+N//2]
         img = normalize(img)
         img = img[54+tx:454+tx, 63+ty:463+ty]
-        cv.imwrite("{}.png".format(theta_z), img)
+        cv.imwrite("{}_fvr.png".format(theta_z), img)
         toc_rendering = time.time()
         print("theta = {}\t {:.2f} seconds".format(theta_z, toc_rendering-tic_rendering))
         
 
-    viewpoints = [(i, 0, 0) for i in range(0, 360, 1)]
+    viewpoints = [(i, 0, 0) for i in range(0, 100, 10)]
     for viewpoint in viewpoints:
         render_view(viewpoint)
 

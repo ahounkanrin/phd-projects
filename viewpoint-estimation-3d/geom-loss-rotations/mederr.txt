@@ -1,1 +1,1 @@
-Median Error = 15.0000
+Median Error = 6.0000

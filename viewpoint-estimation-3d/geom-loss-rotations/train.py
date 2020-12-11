@@ -15,11 +15,12 @@ from tqdm import tqdm
 
 random.seed(0)
 tf.random.set_seed(0)
+min_ctnumber = -1024
 
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
-    parser.add_argument("--learning_rate", type=float, default=0.0001, help="Learning rate")
+    parser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--epochs", type=int, default=200, help="Number of training iteration")
     return parser.parse_args()
 args = get_arguments()
@@ -68,26 +69,31 @@ print("INFO: loading CT volume...")
 ctVolume = nib.load(imgpath1).get_fdata().astype(int)
 ctVolume = np.squeeze(ctVolume)
 voi = ctVolume[:,:, :N] # Extracts volume of interest from the full body ct volume
-voi = normalize(voi)    # Rescale CT numbers between 0 and 255
+#voi = normalize(voi)    # Rescale CT numbers between 0 and 255
+voi = voi - min_ctnumber
+voi = np.pad(voi, N//2, "constant", constant_values=0)
 print("Done.") 
 
 voiShifted = np.fft.fftshift(voi)
+del voi
 voiFFT = np.fft.fftn(voiShifted)
+del voiShifted
 voiFFTShifted = np.fft.fftshift(voiFFT)
+del voiFFT
 print("3D FFT computed.")
 
 
 # Rotation and Interpolation of the projection slice from the 3D FFT volume
-x_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
-y_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
-z_axis = np.linspace(-N/2+0.5, N/2-0.5, N)
+x_axis = np.linspace(-N+0.5, N-0.5, 2*N)
+y_axis = np.linspace(-N+0.5, N-0.5, 2*N)
+z_axis = np.linspace(-N+0.5, N-0.5, 2*N)
 
 projectionPlane = np.array([[xi, 0, zi] for xi in x_axis for zi in z_axis])
-projectionPlane = np.reshape(projectionPlane, (N, N, 3, 1), order="F")
+projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
 
 def render_train_view(viewpoint):
-    theta_y = np.random.randint(-5, 5)
     theta_x = np.random.randint(-5, 5)
+    theta_y = np.random.randint(-5, 5)
     theta_z = viewpoint[0]
     tx = viewpoint[1]
     ty = viewpoint[2]
@@ -96,10 +102,13 @@ def render_train_view(viewpoint):
     projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=voiFFTShifted, xi=projectionSlice, method="linear",
                                     bounds_error=False, fill_value=0)      
     img = np.abs(fftshift(ifft2(projectionSliceFFT)))
+    img = img[N//2:N+N//2, N//2:N+N//2]
     img = normalize(img)
     img = img[54+tx:454+tx, 63+ty:463+ty]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
+    #img = tf.keras.preprocessing.image.random_rotation(img, rg=10, row_axis=0, col_axis=1, channel_axis=2, 
+    #                   fill_mode='constant', cval=0, interpolation_order=1)
     label = one_hot_encoding(theta_z)
     return img, label
 
@@ -123,7 +132,7 @@ model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
 
 # Define cost function, optimizer and metrics
 loss_object = tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=4000, 
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=1000, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
 train_accuracy = tf.keras.metrics.CategoricalAccuracy(name="train_accuracy")
@@ -134,31 +143,31 @@ test_accuracy = tf.keras.metrics.CategoricalAccuracy(name="test_accuracy")
 @tf.function
 def train_step(images, labels):
     # All ops involving trainable variables under the GradientTape context manager are recorded for gradient computation
-    #with tf.device("/gpu:1"):
-    with tf.GradientTape() as tape:
-        predictions = model(images)
-        loss = geom_cross_entropy(predictions, labels)
-        loss = tf.reduce_sum(loss)/images.shape[0]    # use images.shape[0] instead of args.batch_size
-    
-    # Calculate gradients of cost function w.r.t trainable variables and release resources held by GradientTape
-    gradients = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    train_accuracy.update_state(labels, predictions)
+    with tf.device("/gpu:1"):
+        with tf.GradientTape() as tape:
+            predictions = model(images)
+            loss = geom_cross_entropy(predictions, labels)
+            loss = tf.reduce_sum(loss)/images.shape[0]    # use images.shape[0] instead of args.batch_size
+        
+        # Calculate gradients of cost function w.r.t trainable variables and release resources held by GradientTape
+        gradients = tape.gradient(loss, model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        train_accuracy.update_state(labels, predictions)
     return loss
 
 @tf.function
 def test_step(images, labels):
-    #with tf.device("/gpu:1"):
-    predictions = model(images)
-    test_loss = geom_cross_entropy(predictions, labels)
-    test_loss = tf.reduce_sum(test_loss)/images.shape[0]  # use images.shape[0] instead of args.batch_size
-    test_accuracy.update_state(labels, predictions)
+    with tf.device("/gpu:1"):
+        predictions = model(images)
+        test_loss = geom_cross_entropy(predictions, labels)
+        test_loss = tf.reduce_sum(test_loss)/images.shape[0]  # use images.shape[0] instead of args.batch_size
+        test_accuracy.update_state(labels, predictions)
     return test_loss
 
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation2/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=20)
@@ -195,8 +204,8 @@ for epoch in range(args.epochs):
         
         # Save logs with TensorBoard Summary
         if step == 0:
-            train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation/logs/train"
-            val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation/logs/val"
+            train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation2/logs/train"
+            val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation2/logs/val"
             train_summary_writer = tf.summary.create_file_writer(train_logdir)
             val_summary_writer = tf.summary.create_file_writer(val_logdir)
         
