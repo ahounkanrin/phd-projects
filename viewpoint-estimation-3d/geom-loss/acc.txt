@@ -1,0 +1,151 @@
+Epoch 21:
+Median Error = 13.5000
+Accuracy at theta = 0 is: 0.0167
+Accuracy at theta = 5 is: 0.2222
+Accuracy at theta = 10 is: 0.4056
+Accuracy at theta = 15 is: 0.5417
+Accuracy at theta = 20 is: 0.6500
+Accuracy at theta = 25 is: 0.7167
+Accuracy at theta = 30 is: 0.7361
+Accuracy at theta = 35 is: 0.7500
+Accuracy at theta = 40 is: 0.7639
+Accuracy at theta = 45 is: 0.7778
+Accuracy at theta = 50 is: 0.8000
+Accuracy at theta = 55 is: 0.8306
+
+Epoch 22:
+Median Error = 13.5000
+Accuracy at theta = 0 is: 0.0222
+Accuracy at theta = 5 is: 0.2278
+Accuracy at theta = 10 is: 0.4056
+Accuracy at theta = 15 is: 0.5417
+Accuracy at theta = 20 is: 0.6500
+Accuracy at theta = 25 is: 0.7111
+Accuracy at theta = 30 is: 0.7306
+Accuracy at theta = 35 is: 0.7444
+Accuracy at theta = 40 is: 0.7583
+Accuracy at theta = 45 is: 0.7722
+Accuracy at theta = 50 is: 0.7917
+Accuracy at theta = 55 is: 0.8222
+
+Epoch 23:
+Median Error = 13.0000
+Accuracy at theta = 0 is: 0.0194
+Accuracy at theta = 5 is: 0.2333
+Accuracy at theta = 10 is: 0.4056
+Accuracy at theta = 15 is: 0.5472
+Accuracy at theta = 20 is: 0.6528
+Accuracy at theta = 25 is: 0.7194
+Accuracy at theta = 30 is: 0.7389
+Accuracy at theta = 35 is: 0.7500
+Accuracy at theta = 40 is: 0.7694
+Accuracy at theta = 45 is: 0.7833
+Accuracy at theta = 50 is: 0.8000
+Accuracy at theta = 55 is: 0.8278
+
+Epoch 24:
+Median Error = 13.0000
+Accuracy at theta = 0 is: 0.0222
+Accuracy at theta = 5 is: 0.2333
+Accuracy at theta = 10 is: 0.4111
+Accuracy at theta = 15 is: 0.5556
+Accuracy at theta = 20 is: 0.6528
+Accuracy at theta = 25 is: 0.7167
+Accuracy at theta = 30 is: 0.7444
+Accuracy at theta = 35 is: 0.7528
+Accuracy at theta = 40 is: 0.7611
+Accuracy at theta = 45 is: 0.7750
+Accuracy at theta = 50 is: 0.7972
+Accuracy at theta = 55 is: 0.8278
+
+Epoch 25:
+Median Error = 13.0000
+Accuracy at theta = 0 is: 0.0194
+Accuracy at theta = 5 is: 0.2361
+Accuracy at theta = 10 is: 0.4056
+Accuracy at theta = 15 is: 0.5444
+Accuracy at theta = 20 is: 0.6528
+Accuracy at theta = 25 is: 0.7167
+Accuracy at theta = 30 is: 0.7361
+Accuracy at theta = 35 is: 0.7500
+Accuracy at theta = 40 is: 0.7667
+Accuracy at theta = 45 is: 0.7806
+Accuracy at theta = 50 is: 0.7972
+Accuracy at theta = 55 is: 0.8278
+
+Epoch 26:
+Median Error = 13.0000
+Accuracy at theta = 0 is: 0.0194
+Accuracy at theta = 5 is: 0.2306
+Accuracy at theta = 10 is: 0.4056
+Accuracy at theta = 15 is: 0.5500
+Accuracy at theta = 20 is: 0.6500
+Accuracy at theta = 25 is: 0.7139
+Accuracy at theta = 30 is: 0.7389
+Accuracy at theta = 35 is: 0.7472
+Accuracy at theta = 40 is: 0.7611
+Accuracy at theta = 45 is: 0.7750
+Accuracy at theta = 50 is: 0.7917
+Accuracy at theta = 55 is: 0.8222
+
+Epoch 27:
+Median Error = 13.0000
+Accuracy at theta = 0 is: 0.0194
+Accuracy at theta = 5 is: 0.2333
+Accuracy at theta = 10 is: 0.4111
+Accuracy at theta = 15 is: 0.5500
+Accuracy at theta = 20 is: 0.6500
+Accuracy at theta = 25 is: 0.7167
+Accuracy at theta = 30 is: 0.7361
+Accuracy at theta = 35 is: 0.7472
+Accuracy at theta = 40 is: 0.7611
+Accuracy at theta = 45 is: 0.7750
+Accuracy at theta = 50 is: 0.7917
+Accuracy at theta = 55 is: 0.8222
+
+Epoch 28:
+Median Error = 13.0000
+Accuracy at theta = 0 is: 0.0222
+Accuracy at theta = 5 is: 0.2389
+Accuracy at theta = 10 is: 0.4139
+Accuracy at theta = 15 is: 0.5528
+Accuracy at theta = 20 is: 0.6528
+Accuracy at theta = 25 is: 0.7194
+Accuracy at theta = 30 is: 0.7417
+Accuracy at theta = 35 is: 0.7500
+Accuracy at theta = 40 is: 0.7667
+Accuracy at theta = 45 is: 0.7806
+Accuracy at theta = 50 is: 0.7972
+Accuracy at theta = 55 is: 0.8250
+
+
+Epoch 29:
+
+Median Error = 13.0000
+Accuracy at theta = 0 is: 0.0194
+Accuracy at theta = 5 is: 0.2472
+Accuracy at theta = 10 is: 0.4222
+Accuracy at theta = 15 is: 0.5528
+Accuracy at theta = 20 is: 0.6528
+Accuracy at theta = 25 is: 0.7139
+Accuracy at theta = 30 is: 0.7389
+Accuracy at theta = 35 is: 0.7472
+Accuracy at theta = 40 is: 0.7639
+Accuracy at theta = 45 is: 0.7778
+Accuracy at theta = 50 is: 0.7944
+Accuracy at theta = 55 is: 0.8222
+
+Epoch 30
+Median Error = 13.0000
+Accuracy at theta = 0 is: 0.0222
+Accuracy at theta = 5 is: 0.2444
+Accuracy at theta = 10 is: 0.4194
+Accuracy at theta = 15 is: 0.5528
+Accuracy at theta = 20 is: 0.6500
+Accuracy at theta = 25 is: 0.7111
+Accuracy at theta = 30 is: 0.7361
+Accuracy at theta = 35 is: 0.7444
+Accuracy at theta = 40 is: 0.7611
+Accuracy at theta = 45 is: 0.7750
+Accuracy at theta = 50 is: 0.7917
+Accuracy at theta = 55 is: 0.8194
