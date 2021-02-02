@@ -24,14 +24,14 @@ plt.figure(figsize=[8, 5])
 plt.ylabel("Accuracy")
 plt.xlabel("Threshold (degrees)")
 
-#plt.plot(thresholds, acc_geom_loss, label="2D")
+plt.plot(thresholds, acc_geom_loss, label="2D")
 plt.plot(thresholds, acc_geom_loss_3d, label="3D")
 #plt.plot(thresholds, acc_geom_loss_inplane_rotation, label="2D + in-plane rotation")
 plt.plot(thresholds, acc_geom_loss_3d_inplane_rotation, label="3D + in-plane rotation")
 plt.plot(thresholds, acc_geom_loss_3d_outofplane_rotation, label="3D + out-of-plane rotation")
 plt.legend(loc="lower right")
 plt.grid(True)
-plt.savefig("accuracy_3d.png")
+plt.savefig("acc_3d.png")
 
 """
 medErrs = [medErr_geom_loss, medErr_geom_loss_3d_inplane_rotation, medErr_geom_loss_3d_outofplane_rotation]

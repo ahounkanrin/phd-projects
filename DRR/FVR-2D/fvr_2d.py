@@ -6,6 +6,7 @@ from scipy.interpolate import interpn
 from scipy.fft import fftn, fftshift, ifft2, ifft
 from matplotlib import pyplot as plt
 from scipy import ndimage
+from scipy.interpolate import Rbf
 
 np.random.seed(0)
 N = 400
@@ -27,7 +28,7 @@ if __name__ == "__main__":
 
 	img = cv.imread("0_fvr.png", 0)
 	#img = ndimage.rotate(img, 45, reshape=False)
-	img = np.pad(img, N//2, "constant", constant_values=0)
+	#img = np.pad(img, N//2, "constant", constant_values=0)
 	print(img.shape)
 	imgShifted = fftshift(img)
 	imgFFT = fftn(imgShifted)
@@ -39,13 +40,18 @@ if __name__ == "__main__":
 
 	# Rotation and Interpolation of the projection slice from the 3D FFT volume
 
-	x = np.linspace(-N+0.5, N-0.5, 2*N)
-	y = np.linspace(-N+0.5, N-0.5, 2*N)
-	#x = np.linspace(-N//2+0.5, N//2-0.5, N)
-	#y = np.linspace(-N//2+0.5, N//2-0.5, N)
+	#x = np.linspace(-N+0.5, N-0.5, 2*N)
+	#y = np.linspace(-N+0.5, N-0.5, 2*N)
+	x = np.linspace(-N//2+0.5, N//2-0.5, N)
+	y = np.linspace(-N//2+0.5, N//2-0.5, N)
+	xx, yy = np.meshgrid(x, y)
+	xx = xx.flatten()
+	yy = yy.flatten()
+	data = imgFFTShifted.flatten()
+	rbfi = Rbf(xx, yy, data, function="cubic")
 	projectionLine = np.array([[xi, 0.] for xi in x])
-	projectionLine = np.reshape(projectionLine, (2*N, 2, 1))
-	
+	projectionLine = np.reshape(projectionLine, (N, 2, 1))
+
 	def render_view(theta, interpMethod):
 		tic_rendering = time.time()
 		rotationMatrix = Rx(theta)
@@ -55,6 +61,19 @@ if __name__ == "__main__":
 		projectionSliceFFTImag = interpn(points=(x, y), values=imgFFTShiftedImag, xi=projectionSlice, method=interpMethod,
 				                     bounds_error=False) 
 		projectionSliceFFT = projectionSliceFFTReal + 1j * projectionSliceFFTImag			                     
+		projection = fftshift(ifft(projectionSliceFFT))  
+		projection = np.abs(projection)
+		#projection = normalize(projection)
+		toc_rendering = time.time()
+		print("theta = {}\t {:.2f} seconds".format(theta, toc_rendering-tic_rendering))
+		return projection
+
+	def render_view_rbf(theta):
+		tic_rendering = time.time()
+		rotationMatrix = Rx(theta)
+		projectionSlice = np.squeeze(rotate_line(projectionLine, rotationMatrix))
+		projectionSlice = np.reshape(projectionSlice, (2, N))
+		projectionSliceFFT = rbfi(projectionSlice)
 		projection = fftshift(ifft(projectionSliceFFT))  
 		projection = np.abs(projection)
 		#projection = normalize(projection)
@@ -74,6 +93,8 @@ if __name__ == "__main__":
 	projection_y_linear = render_view(90, "linear") 
 	projection_x_nearest = render_view(0, "nearest") 
 	projection_y_nearest = render_view(90, "nearest") 
+	projection_x_cubic = render_view_rbf(0)
+	projection_y_cubic = render_view_rbf(90)
 	#img_x = normalize(img_x)
 	#img_y = normalize(img_y)
 	#projection_x = normalize(projection_x)
@@ -86,6 +107,7 @@ if __name__ == "__main__":
 	plt.plot(projection_x_nearest, label=r"FVR -- nearest neighbor")
 	plt.plot(projection_x_linear, label=r"FVR -- linear")
 	plt.plot(projection_x_spline, label=r"FVR -- spline")
+	plt.plot(projection_x_cubic, label="FVR -- cubic")
 	plt.legend(loc="upper left")
 	plt.grid(True)
 	plt.savefig("xprojection_padding_2X_spline.png")
