@@ -72,8 +72,8 @@ projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
 
 def render_test_view(viewpoint):
     theta = viewpoint[0]
-    #tx = viewpoint[1]
-    #ty = viewpoint[2]
+    tx = viewpoint[1]
+    ty = viewpoint[2]
     rotationMatrix = rotation_matrix(theta)
     projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
     projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=test_voiFFTShifted, xi=projectionSlice, method="linear",
@@ -81,7 +81,7 @@ def render_test_view(viewpoint):
     img = np.abs(fftshift(ifft2(projectionSliceFFT)))
     img = img[N//2:N+N//2, N//2:N+N//2]
     img = normalize(img)
-    #img = img[54+tx:454+tx, 63+ty:463+ty]
+    img = img[56+ty:456+ty, 56+tx:456+tx]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
     label = one_hot_encoding(theta)
@@ -119,8 +119,8 @@ if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
 
-checkpoint.restore(manager.checkpoints[-1])  
-#checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/ckpt-2")    
+#checkpoint.restore(manager.checkpoints[-1])  
+checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation2/checkpoints/ckpt-40")  
 xtest_epoch = xtest.copy()
 x_test = []
 y_test = []
@@ -149,7 +149,7 @@ for test_images, test_labels in tqdm(test_data.map(preprocess,
                                         num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Testing"):
     pred_it = test_step(test_images, test_labels)
     pred.append(np.argmax(pred_it))
-
+print("prediction list:", pred)
 gt = [np.argmax(label) for label in y_test]
 errors = [geodesic_distance([gt[i], pred[i]]) for i in range(len(gt))]
 thresholds = [theta for theta in range(0, 60, 5)]
@@ -158,6 +158,9 @@ print("\n\nMedian Error = {:.4f}".format(np.median(np.array(errors))))
 with open("mederr.txt", "w") as f:
 	print("Median Error = {:.4f}".format(np.median(np.array(errors))), file=f)
 
+f = open("pred1.txt", "w+")
+print("predictions", pred, file=f)
+f.close()
 acc_list = []
 
 for theta in thresholds:

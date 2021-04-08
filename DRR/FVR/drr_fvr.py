@@ -7,6 +7,14 @@ from scipy.fft import fftn, fftshift, ifft2
 
 np.random.seed(0)
 min_ctnumber = -1024
+def rotation_matrix(angle):
+    x = angle * math.pi / 180.
+    r11, r12, r13 = np.cos(x), -np.sin(x), 0.
+    r21, r22, r23 = np.sin(x), np.cos(x), 0.
+    r31, r32, r33 = 0., 0., 1.
+    r = np.array([[r11, r12, r13], [r21, r22, r23], [r31, r32, r33]])
+    return r
+
 def Rx(theta):
     x = theta * np.pi / 180.
     r11, r12, r13 = 1., 0. , 0.
@@ -38,7 +46,8 @@ def normalize(img):
 
 if __name__ == "__main__":
     # Load ct volume
-    imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii"
+    #imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii" # training ct scan
+    imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/SMIR.Body.057Y.F.CT.59693/SMIR.Body.057Y.F.CT.59693.nii"
     N = 512 
     print("INFO: loading CT volume...")
     tic_load = time.time()
@@ -78,20 +87,22 @@ if __name__ == "__main__":
         tx = viewpoint[1]
         ty = viewpoint[2]
         tic_rendering = time.time()
-        rotationMatrix = Rx(-theta_x) @ Ry(-theta_y) @ Rz(-theta_z) # Rotate the projection plane clockwise to get a counter clockwise projections of the ct volume
+        rotationMatrix = Rz(theta_z) # Rx(theta_x) @ Ry(theta_y) 
         projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
         projectionSliceFFT = interpn(points=(x, y, z), values=voiFFTShifted, xi=projectionSlice, method="linear",
                                      bounds_error=False)      
         img = np.abs(fftshift(ifft2(projectionSliceFFT)))
         img = img[N//2:N+N//2, N//2:N+N//2]
         img = normalize(img)
-        img = img[54+tx:454+tx, 63+ty:463+ty]
-        cv.imwrite("{}_fvr.png".format(theta_z), img)
+        #img = img[54+tx:454+tx, 63+ty:463+ty]
+        #img = cv.resize(img, (400, 400), interpolation=cv.INTER_AREA)
+        #img = img[56+tx:456+tx, 56+ty:456+ty]
+        cv.imwrite("./test-SMIR.Body.057Y.F.CT.59693/test100/test{}.png".format(theta_z), img)
         toc_rendering = time.time()
         print("theta = {}\t {:.2f} seconds".format(theta_z, toc_rendering-tic_rendering))
         
 
-    viewpoints = [(i, 0, 0) for i in range(0, 100, 10)]
+    viewpoints = [(i, 0, 0) for i in range(0, 360, 1)]
     for viewpoint in viewpoints:
         render_view(viewpoint)
 

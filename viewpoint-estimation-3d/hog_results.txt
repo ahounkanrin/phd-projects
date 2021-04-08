@@ -1,0 +1,61 @@
+Cell size 8x8:
+Median Error = 10.0000
+Accuracy at theta = 0 is: 0.0389
+Accuracy at theta = 5 is: 0.3528
+Accuracy at theta = 10 is: 0.5028
+Accuracy at theta = 15 is: 0.5889
+Accuracy at theta = 20 is: 0.6472
+Accuracy at theta = 25 is: 0.7000
+Accuracy at theta = 30 is: 0.7472
+Accuracy at theta = 35 is: 0.7722
+Accuracy at theta = 40 is: 0.8056
+Accuracy at theta = 45 is: 0.8139
+Accuracy at theta = 50 is: 0.8222
+Accuracy at theta = 55 is: 0.8417
+
+Cell size 16x16
+Median Error = 8.0000
+Accuracy at theta = 0 is: 0.0167
+Accuracy at theta = 5 is: 0.3500
+Accuracy at theta = 10 is: 0.5750
+Accuracy at theta = 15 is: 0.7361
+Accuracy at theta = 20 is: 0.8111
+Accuracy at theta = 25 is: 0.8500
+Accuracy at theta = 30 is: 0.8833
+Accuracy at theta = 35 is: 0.8944
+Accuracy at theta = 40 is: 0.8972
+Accuracy at theta = 45 is: 0.9000
+Accuracy at theta = 50 is: 0.9083
+Accuracy at theta = 55 is: 0.9194
+
+Cell size 32x32
+Median Error = 11.0000
+Accuracy at theta = 0 is: 0.0194
+Accuracy at theta = 5 is: 0.2389
+Accuracy at theta = 10 is: 0.4750
+Accuracy at theta = 15 is: 0.6667
+Accuracy at theta = 20 is: 0.7528
+Accuracy at theta = 25 is: 0.7833
+Accuracy at theta = 30 is: 0.8167
+Accuracy at theta = 35 is: 0.8500
+Accuracy at theta = 40 is: 0.8722
+Accuracy at theta = 45 is: 0.8944
+Accuracy at theta = 50 is: 0.8944
+Accuracy at theta = 55 is: 0.9056
+
+Cell size 64x64
+
+Median Error = 15.0000
+Accuracy at theta = 0 is: 0.0139
+Accuracy at theta = 5 is: 0.2111
+Accuracy at theta = 10 is: 0.3722
+Accuracy at theta = 15 is: 0.5000
+Accuracy at theta = 20 is: 0.6000
+Accuracy at theta = 25 is: 0.6500
+Accuracy at theta = 30 is: 0.6944
+Accuracy at theta = 35 is: 0.7333
+Accuracy at theta = 40 is: 0.7667
+Accuracy at theta = 45 is: 0.7833
+Accuracy at theta = 50 is: 0.7889
+Accuracy at theta = 55 is: 0.7889
+

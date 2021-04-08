@@ -97,6 +97,8 @@ x = tf.keras.layers.GlobalAveragePooling2D()(x)
 x = tf.keras.layers.Dense(1024, activation="relu")(x)
 outputs = tf.keras.layers.Dense(360, activation="softmax")(x)
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
+model.build((None, 200, 200, 3))
+model.summary()
 
 # Define cost function, optimizer and metrics
 loss_object = tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
