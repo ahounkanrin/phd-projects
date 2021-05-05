@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 testID = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.036Y.F.CT.58319", "SMIR.Body.037Y.M.CT.57613", "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.041Y.F.CT.57699", "SMIR.Body.057Y.F.CT.59693"]
 imgs = [cv.imread("accuracy_{}.png".format(id))[..., ::-1] for id in testID]
 fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(30, 12)) #
-fig.suptitle("Accuracy of viewpoint estimation for different CT-scans", fontsize=20)
+fig.suptitle("Accuracy of viewpoint estimation (training CT: SMIR.Body.021Y.M.CT.57761)", fontsize=20)
 
 ax[0][0].imshow(imgs[0])
 ax[0][0].axis("off")

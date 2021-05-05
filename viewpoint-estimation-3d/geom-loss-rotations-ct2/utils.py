@@ -103,10 +103,16 @@ def angular_distance(angle1, angle2):
     dist = tf.where(dist1>90, x=dist2, y=dist1)
     return dist
 
+def angular_distance2(angle1, angle2):
+    dist1 = tf.math.mod(tf.math.abs(angle1 - angle2), 360)
+    dist2 = 360 - dist1
+    dist = tf.where(dist1>180, x=dist2, y=dist1)
+    return dist
+
 def get_weights(gt_class, sigma=7.0): 
     k = tf.constant([i for i in range(360)], dtype=tf.float32)
     gt = gt_class * tf.ones(shape=(360))
-    distances = angular_distance(gt, k)
+    distances = angular_distance2(gt, k)
     weights = tf.math.exp(-distances/sigma)
     return weights
 

@@ -42,52 +42,6 @@ def normalize(img):
 
 # Load ct volume
 INPUT_SIZE = (200, 200)
-# imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
-# N = 512 
-# print("INFO: loading CT volume...")
-# tic_load = time.time()
-# test_ctVolume = nib.load(imgpath).get_fdata().astype(int)
-# test_ctVolume = np.squeeze(test_ctVolume)
-# test_voi = test_ctVolume[:,:, :N] # Extracts volume of interest from the full body ct volume
-# #test_voi = normalize(test_voi)    # Rescale CT numbers between 0 and 255
-# test_voi = test_voi - min_ctnumber
-# test_voi = np.pad(test_voi, N//2, "constant", constant_values=0)
-# toc_load = time.time()
-# print("Done after {:.2f} seconds.".format(toc_load - tic_load)) 
-
-# tic_fft = time.time()
-# test_voiShifted = np.fft.fftshift(test_voi)
-# test_voiFFT = np.fft.fftn(test_voiShifted)
-# test_voiFFTShifted = np.fft.fftshift(test_voiFFT)
-# toc_fft = time.time()
-# print("3D FFT computed in {:.2f} seconds.".format(toc_fft - tic_fft))
-
-
-# # Rotation and Interpolation of the projection slice from the 3D FFT volume
-# x_axis = np.linspace(-N+0.5, N-0.5, 2*N)
-# y_axis = np.linspace(-N+0.5, N-0.5, 2*N)
-# z_axis = np.linspace(-N+0.5, N-0.5, 2*N)
-
-# projectionPlane = np.array([[xi, 0, zi] for xi in x_axis for zi in z_axis])
-# projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
-
-# def render_test_view(viewpoint):
-#     theta = viewpoint[0]
-#     tx = viewpoint[1]
-#     ty = viewpoint[2]
-#     rotationMatrix = rotation_matrix(theta)
-#     projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
-#     projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=test_voiFFTShifted, xi=projectionSlice, method="linear",
-#                                     bounds_error=False)      
-#     img = np.abs(fftshift(ifft2(projectionSliceFFT)))
-#     img = img[N//2:N+N//2, N//2:N+N//2]
-#     img = normalize(img)
-#     img = img[56+ty:456+ty, 56+tx:456+tx]
-#     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
-#     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-#     label = one_hot_encoding(theta)
-#     return img, label
-
 
 # Define the model
 baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), 
@@ -123,12 +77,13 @@ checkpoint.restore(manager.checkpoints[-1])
 
 #checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation2/checkpoints/ckpt-40")   
 scales = ["80", "90", "100", "110", "120"]
+testID = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.036Y.F.CT.58319", "SMIR.Body.037Y.M.CT.57613", "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.041Y.F.CT.57699", "SMIR.Body.057Y.F.CT.59693"]
 
 min_errors = []
 #err_list = []
 #pred_list = []
 for view_id in range(0, 360):	
-	img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/test-data/test-SMIR.Body.025Y.M.CT.57697/s100/test{}.png".format(view_id), 0)
+	img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/SMIR.Body.057Y.F.CT.59693/s100/{}.png".format(view_id), 0)
 	#f = open("errors.txt", "+a")
 	err_list = []
 	for ty in tqdm(range(-10, 11, 1), desc="ty"):

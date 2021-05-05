@@ -77,14 +77,14 @@ checkpoint.restore(manager.checkpoints[-1])
 
 #checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation2/checkpoints/ckpt-40")   
 scales = ["80", "90", "100", "110", "120"]
-
+testID = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.036Y.F.CT.58319", "SMIR.Body.037Y.M.CT.57613", "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.041Y.F.CT.57699", "SMIR.Body.057Y.F.CT.59693"]
 min_errors = []
 #err_list = []
 #pred_list = []
 for view_id in range(0, 360):
 	err_list = []
 	for scale in scales:
-		img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/test-data/test-SMIR.Body.025Y.M.CT.57697/s{}/test{}.png".format(scale, view_id), 0)
+		img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/SMIR.Body.041Y.F.CT.57699/s{}/{}.png".format(scale, view_id), 0)
 		for ty in tqdm(range(-10, 11, 1), desc="ty"):
 			for tx in tqdm(range(-10, 11, 1), desc="tx"):
 				img = img_test[56+ty:456+ty, 56+tx:456+tx]

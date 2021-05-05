@@ -47,7 +47,7 @@ def normalize(img):
 if __name__ == "__main__":
     # Load ct volume
     #imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.021Y.M.CT.57761/SMIR.Body.021Y.M.CT.57761.nii" # training ct scan
-    imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/SMIR.Body.057Y.F.CT.59693/SMIR.Body.057Y.F.CT.59693.nii"
+    imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/SMIR.Body.058Y.M.CT.59468/SMIR.Body.058Y.M.CT.59468.nii"
     N = 512 
     print("INFO: loading CT volume...")
     tic_load = time.time()
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         #img = img[54+tx:454+tx, 63+ty:463+ty]
         #img = cv.resize(img, (400, 400), interpolation=cv.INTER_AREA)
         #img = img[56+tx:456+tx, 56+ty:456+ty]
-        cv.imwrite("./test-SMIR.Body.057Y.F.CT.59693/test100/test{}.png".format(theta_z), img)
+        cv.imwrite("./train-SMIR.Body.058Y.M.CT.59468/s100/train{}.png".format(theta_z), img)
         toc_rendering = time.time()
         print("theta = {}\t {:.2f} seconds".format(theta_z, toc_rendering-tic_rendering))
         

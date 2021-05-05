@@ -128,11 +128,11 @@ min_errors = []
 #err_list = []
 #pred_list = []
 for view_id in range(0, 360):	
-	img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/test-data/test-SMIR.Body.057Y.F.CT.59693/s100/test{}.png".format(view_id), 0)
+	img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/SMIR.Body.058Y.M.CT.59468/s100/{}.png".format(view_id), 0)
 	#f = open("errors.txt", "+a")
 	err_list = []
-	for ty in tqdm(range(-10, 11, 1), desc="ty"):
-		for tx in tqdm(range(-10, 11, 1), desc="tx"):
+	for ty in tqdm(range(1), desc="ty"):
+		for tx in tqdm(range(1), desc="tx"):
 		    img = img_test[56+ty:456+ty, 56+tx:456+tx]
 		    img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
 		    img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)

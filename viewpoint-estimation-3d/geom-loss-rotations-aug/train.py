@@ -70,7 +70,7 @@ ctVolume = nib.load(imgpath1).get_fdata().astype(int)
 ctVolume = np.squeeze(ctVolume)
 voi = ctVolume[:,:, :N] # Extracts volume of interest from the full body ct volume
 #voi = normalize(voi)    # Rescale CT numbers between 0 and 255
-voi = voi - min_ctnumber
+voi = voi - np.min(voi)
 voi = np.pad(voi, N//2, "constant", constant_values=0)
 print("Done.") 
 
@@ -132,6 +132,29 @@ xval = random.sample(xtrainval, len(xtrainval)//4)
 for val_example in xval:
         xtrainval.remove(val_example)
 xtrain = xtrainval.copy()
+
+xval_epoch = xval.copy()
+x_val = []
+y_val = []
+print("Generating validation data...")
+while len(xval_epoch) > 0:
+    if len(xval_epoch) >= args.batch_size:
+        val_viewpoints_batch = random.sample(xval_epoch, args.batch_size)
+    else:
+        val_viewpoints_batch = xval_epoch.copy()
+    for example in val_viewpoints_batch:
+        xval_epoch.remove(example)
+
+    with Pool() as pool:
+        val_batch = pool.map(render_train_view, val_viewpoints_batch)
+    val_batch = np.array(val_batch)
+    for i in range(len(val_batch)):
+        x_val.append(val_batch[i, 0])
+        y_val.append(val_batch[i, 1])
+    
+x_val = np.array(x_val)
+y_val = np.array(y_val)        
+val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
 
 # Define the model
 baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), 
@@ -236,28 +259,6 @@ for epoch in range(args.epochs):
         
 
     epoch +=1
-    xval_epoch = xval.copy()
-    x_val = []
-    y_val = []
-    print("Epoch {}: Generating validation data...".format(epoch))
-    while len(xval_epoch) > 0:
-        if len(xval_epoch) >= args.batch_size:
-            val_viewpoints_batch = random.sample(xval_epoch, args.batch_size)
-        else:
-            val_viewpoints_batch = xval_epoch.copy()
-        for example in val_viewpoints_batch:
-            xval_epoch.remove(example)
-
-        with Pool() as pool:
-            val_batch = pool.map(render_train_view, val_viewpoints_batch)
-        val_batch = np.array(val_batch)
-        for i in range(len(val_batch)):
-            x_val.append(val_batch[i, 0])
-            y_val.append(val_batch[i, 1])
-        
-    x_val = np.array(x_val)
-    y_val = np.array(y_val)        
-    val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
     
     test_it = 0
     test_loss = 0.

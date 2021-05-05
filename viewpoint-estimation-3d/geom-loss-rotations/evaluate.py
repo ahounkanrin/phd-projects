@@ -41,7 +41,7 @@ def normalize(img):
 
 # Load ct volume
 INPUT_SIZE = (200, 200)
-imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
+imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/SMIR.Body.025Y.M.CT.57697/SMIR.Body.025Y.M.CT.57697.nii"
 N = 512 
 print("INFO: loading CT volume...")
 tic_load = time.time()
@@ -81,7 +81,7 @@ def render_test_view(viewpoint):
     img = np.abs(fftshift(ifft2(projectionSliceFFT)))
     img = img[N//2:N+N//2, N//2:N+N//2]
     img = normalize(img)
-    img = img[56+ty:456+ty, 56+tx:456+tx]
+    #img = img[56+ty:456+ty, 56+tx:456+tx]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
     label = one_hot_encoding(theta)
@@ -114,13 +114,13 @@ def test_step(images, labels):
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation2/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
 
 #checkpoint.restore(manager.checkpoints[-1])  
-checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation2/checkpoints/ckpt-40")  
+checkpoint.restore("/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d/geom-loss-out-of-plane-rotation/checkpoints/ckpt-40")  
 xtest_epoch = xtest.copy()
 x_test = []
 y_test = []

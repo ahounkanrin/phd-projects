@@ -84,7 +84,7 @@ min_errors = []
 for view_id in range(0, 360):
 	err_list = []
 	for scale in scales:
-		img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/test-data/test-SMIR.Body.057Y.F.CT.59693/s{}/test{}.png".format(scale, view_id), 0)
+		img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/SMIR.Body.025Y.M.CT.57697/s{}/{}.png".format(scale, view_id), 0)
 		for ty in tqdm(range(-10, 11, 1), desc="ty"):
 			for tx in tqdm(range(-10, 11, 1), desc="tx"):
 				img = img_test[56+ty:456+ty, 56+tx:456+tx]

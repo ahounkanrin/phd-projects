@@ -11,8 +11,8 @@ acc_geom_loss = [0.0000, 0.3806, 0.5556, 0.6500, 0.7167, 0.7361, 0.7528, 0.7639,
 #medErr_geom_loss_3d = 6.0
 acc_geom_loss_3d = [0.0194, 0.4417, 0.6750, 0.7583, 0.7833, 0.7917, 0.7944, 0.7944, 0.7944, 0.7944, 0.7944, 0.7972]
 
-medErr_geom_loss_3d_inplane_rotation = 8.5
-acc_geom_loss_3d_inplane_rotation = [0.0306, 0.3361, 0.5750, 0.7306, 0.8194, 0.8556, 0.8722, 0.8722, 0.8722, 0.8722, 0.8722, 0.8722]
+medErr_geom_loss_3d_inplane_rotation = 6.0
+acc_geom_loss_3d_inplane_rotation = [ 0.0222, 0.4556, 0.6306, 0.7139, 0.7500, 0.7583, 0.7611, 0.7667, 0.7750, 0.8000, 0.8222, 0.8306]
 
 plt.figure(figsize=[8, 5])
 #plt.title("Accuracy")
