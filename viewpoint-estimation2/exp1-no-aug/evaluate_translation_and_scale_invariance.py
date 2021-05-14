@@ -76,39 +76,44 @@ manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_t
 checkpoint.restore(manager.checkpoints[-1]) 
 
 scales = ["80", "90", "100", "110", "120"]
-testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.045Y.M.CT.59470", 
-             "SMIR.Body.049Y.M.CT.57791", "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
+testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Body.037Y.F.CT.57796", "SMIR.Body.040Y.M.CT.57768", 
+        "SMIR.Body.045Y.M.CT.59470", "SMIR.Body.049Y.M.CT.57791", "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
+
+scan = testScans[1]
 min_errors = []
 #err_list = []
 #pred_list = []
-for scan in testScans:
-    for view_id in range(0, 360):
-        err_list = []
-        for scale in scales:
-            img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/normals/test/{}/s{}/{}.png".format(scan, scale, view_id), 0)
-            for ty in tqdm(range(-20, 21, 5), desc="ty"):
-                for tx in tqdm(range(-20, 21, 5), desc="tx"):
-                    img = img_test[56+ty:456+ty, 56+tx:456+tx]
-                    img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
-                    img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-                    img = img/255.0
-                    x_test = np.expand_dims(img, axis=0)
-                    y_test = np.array(one_hot_encoding(view_id))        
-                    pred = np.argmax(test_step(x_test, y_test)) 
-                    gt = np.argmax(y_test) 
-                    #error = geodesic_distance([gt, pred])
-                    error = angular_distance(gt, pred) 
-                    #print("Error = {:.4f}".format(error))
-                    err_list.append(error)
-                    
-        min_errors.append(np.min(err_list))
+#for scan in testScans:
+for view_id in tqdm(range(0, 360), desc="\ntesting scan {}".format(scan)):
+    err_list = []
+    for scale in scales:
+        img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/normals/test/{}/s{}/{}.png".format(scan, scale, view_id), 0)
+        for ty in range(-10, 11, 1):
+            for tx in range(-10, 11, 1):
+                img = img_test[56+ty:456+ty, 56+tx:456+tx]
+                img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
+                img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
+                img = img/255.0
+                x_test = np.expand_dims(img, axis=0)
+                y_test = np.array(one_hot_encoding(view_id))        
+                pred = np.argmax(test_step(x_test, y_test)) 
+                gt = np.argmax(y_test) 
+                #error = geodesic_distance([gt, pred])
+                error = angular_distance(gt, pred) 
+                #print("Error = {:.4f}".format(error))
+                err_list.append(error)
+                
+    min_errors.append(np.min(err_list))
             
-
 thresholds = [theta for theta in range(0, 95, 5)]
-
+acc_list = []
 for theta in thresholds:
     acc_bool = np.array([min_errors[i] <= theta  for i in range(len(min_errors))])
     acc = np.mean(acc_bool)
-    print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
+    acc_list.append(acc)
+    # print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
 
-
+print("acc = ",  acc_list)
+f = open("acc_{}.txt".format(scan), "w+")
+print("acc = ",  acc_list, file=f)
+f.close()

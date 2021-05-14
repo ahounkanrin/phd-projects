@@ -36,13 +36,15 @@ print("INFO: Processing dataset...")
 INPUT_SIZE = (200, 200)
 
 data_dir = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/test/"
-data_dir2 = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/test2/SMIR.Body.033Y.M.CT.57766/"
-test_data = tf.keras.preprocessing.image_dataset_from_directory(data_dir,
+data_dir2 = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/SMIR.Body.025Y.M.CT.57697/"
+test_data = tf.keras.preprocessing.image_dataset_from_directory(data_dir2,
 shuffle = False,
 image_size=INPUT_SIZE,
-batch_size=args.batch_size)
+class_names=[str(i) for i in range(360)],
+batch_size=1)
 test_data = test_data.map(lambda x,y: preprocess(x,y), num_parallel_calls=tf.data.experimental.AUTOTUNE) 
 
+#print(test_data.class_names)
 print("Done.")
 
 
@@ -53,8 +55,8 @@ x = tf.keras.layers.Dense(1024, activation="relu")(x)
 outputs = tf.keras.layers.Dense(360, activation="softmax")(x)
 
 model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
-model.trainable = False
-model.summary()
+#model.trainable = False
+#model.summary()
 
 # Define cost function, optimizer and metrics
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=500, 
@@ -76,29 +78,29 @@ pred = []
 gt = []
 
 for test_images, test_labels in tqdm(test_data):
-        pred.append(np.argmax(model(test_images), axis=-1)) 
-        gt.append(test_labels.numpy())
+        pred.append(np.argmax(model(test_images, training=False), axis=-1)) 
+        gt.append(test_labels)
 
 pred = np.array(pred).flatten()
 gt = np.array(gt).flatten()
 
+print(pred)
 
-#gt = [np.argmax(label) for label in y_test]
 
-thresholds = [theta for theta in range(0, 95, 5)]
+# thresholds = [theta for theta in range(0, 95, 5)]
     
-error = [angular_distance(gt[i], pred[i]).numpy() for i in range(len(gt))]
+# error = [angular_distance(gt[i], pred[i]).numpy() for i in range(len(gt))]
 
-print("\n\nMedian Error = {:.4f}".format(np.median(np.array(error))))
-with open("accuracy_mederr.txt", "w+") as f:
-    print("Median Error = {:.4f}".format(np.median(np.array(error))), file=f)
+# print("\n\nMedian Error = {:.4f}".format(np.median(np.array(error))))
+# with open("accuracy_mederr.txt", "w+") as f:
+#     print("Median Error = {:.4f}".format(np.median(np.array(error))), file=f)
 
-acc_list2 = []
-for theta in thresholds:
-    acc_bool2 = np.array([error[i] <= theta  for i in range(len(error))])
-    acc2 = np.mean(acc_bool2)
-    acc_list2.append(acc2)
-    print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2))
-    with open("accuracy_mederr.txt", "a") as f:
-        print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2), file=f)
+# acc_list2 = []
+# for theta in thresholds:
+#     acc_bool2 = np.array([error[i] <= theta  for i in range(len(error))])
+#     acc2 = np.mean(acc_bool2)
+#     acc_list2.append(acc2)
+#     print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2))
+#     with open("accuracy_mederr.txt", "a") as f:
+#         print("Accuracy at theta = {} is: {:.4f}".format(theta, acc2), file=f)
     

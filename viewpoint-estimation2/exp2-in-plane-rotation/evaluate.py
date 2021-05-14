@@ -47,14 +47,22 @@ print("Done.")
 
 
 baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), include_top=False, weights="imagenet")
-x = baseModel.output
+inputs = tf.keras.Input(shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3))
+data_aug = tf.keras.Sequential([tf.keras.layers.experimental.preprocessing.RandomRotation(factor=(-0.02, 0.02), fill_mode='constant', 
+            interpolation='bilinear', seed=123, name=None),
+            #tf.keras.layers.experimental.preprocessing.RandomZoom(height_factor=(-0.3, 0.3), width_factor=(-0.3, 0.3), 
+            #fill_mode='constant', interpolation='bilinear', seed=None, name=None)
+            ], name="data_augmentation_layer")
+
+x = data_aug(inputs)
+x = baseModel(x)
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
 x = tf.keras.layers.Dense(1024, activation="relu")(x)
 outputs = tf.keras.layers.Dense(360, activation="softmax")(x)
 
-model = tf.keras.Model(inputs=baseModel.input, outputs=outputs)
-model.trainable = False
-#model.summary()
+model = tf.keras.Model(inputs=inputs, outputs=outputs)
+#model.trainable = False
+model.summary()
 
 # Define cost function, optimizer and metrics
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=500, 
@@ -66,7 +74,7 @@ test_accuracy = tf.keras.metrics.CategoricalAccuracy(name="test_accuracy")
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation2/geom-loss/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation2/exp2-in-plane-rotation/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=20)
@@ -76,7 +84,7 @@ pred = []
 gt = []
 
 for test_images, test_labels in tqdm(test_data):
-        pred.append(np.argmax(model(test_images), axis=-1)) 
+        pred.append(np.argmax(model(test_images, training=False), axis=-1)) 
         gt.append(test_labels.numpy())
 
 pred = np.array(pred).flatten()

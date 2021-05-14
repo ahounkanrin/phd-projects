@@ -35,14 +35,10 @@ def preprocess(x, y):
 def rotate_plane(plane, rotationMatrix): 
 	return np.matmul(rotationMatrix, plane)
 
-def normalize(img):
-    img = (img - np.min(img))/(np.max(img) - np.min(img))
-    img = 255 * img 
-    return np.uint8(img)
+
 
 # Load ct volume
 INPUT_SIZE = (200, 200)
-
 
 # Define the model
 baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), 
@@ -63,7 +59,7 @@ train_accuracy = tf.keras.metrics.CategoricalAccuracy(name="train_accuracy")
 
 @tf.function
 def test_step(images, labels):
-    predictions = model(images)
+    predictions = model(images, training=False)
     return predictions
 
 
@@ -74,41 +70,50 @@ if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
 
-#checkpoint.restore(manager.checkpoints[-1]) 
+checkpoint.restore(manager.checkpoints[-1]) 
 
- 
 scales = ["80", "90", "100", "110", "120"]
-testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.045Y.M.CT.59470", 
-             "SMIR.Body.049Y.M.CT.57791", "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
+testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Body.037Y.F.CT.57796", "SMIR.Body.040Y.M.CT.57768", 
+        "SMIR.Body.045Y.M.CT.59470", "SMIR.Body.049Y.M.CT.57791", "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
+
+scan = testScans[0]
 min_errors = []
 #err_list = []
-#pred_list = []
-for scan in testScans:
-    for view_id in range(0, 360):	
-        img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/normals/test/{}/s100/{}.png".format(scan, view_id), 0)
-        #f = open("errors.txt", "+a")
-        err_list = []
-        for ty in tqdm(range(-20, 21, 5), desc="ty"):
-            for tx in tqdm(range(-20, 21, 5), desc="tx"):
-                img = img_test[56+ty:456+ty, 56+tx:456+tx]
-                img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
-                img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-                img = img/255.0
-                x_test = np.expand_dims(img, axis=0)
-                y_test = np.array(one_hot_encoding(view_id))        
-                pred = np.argmax(test_step(x_test, y_test)) 
-                gt = np.argmax(y_test) 
-                #error = geodesic_distance([gt, pred])
-                error = angular_distance(gt, pred) 
-                #print("Error = {:.4f}".format(error))
-                err_list.append(error)
-                
-        min_errors.append(np.min(err_list))
+pred_list = []
+#for scan in testScans:
+for view_id in tqdm(range(0, 360), desc="\n{}".format(scan)):
+    err_list = []
+    
+    #img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/normals/test/{}/s100/{}.png".format(scan, view_id), 0)
+    img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/SMIR.Body.025Y.M.CT.57697/{}/{}.png".format(view_id, view_id), 0)
+    for ty in range(1):
+        for tx in range(1):
+            #img = img_test[56+ty:456+ty, 56+tx:456+tx]
+            img = cv.resize(img_test, INPUT_SIZE, interpolation=cv.INTER_AREA)
+            img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
+            img = img/255.0
+            x_test = np.expand_dims(img, axis=0)
+            y_test = np.array(one_hot_encoding(view_id))        
+            pred = np.argmax(test_step(x_test, y_test)) 
+            gt = np.argmax(y_test) 
+            #error = geodesic_distance([gt, pred])
+            error = angular_distance(gt, pred) 
+            #print("Error = {:.4f}".format(error))
+            err_list.append(error)
+            pred_list.append(pred)
             
-thresholds = [theta for theta in range(0, 95, 5)]
+    min_errors.append(np.min(err_list))
 
-for theta in thresholds:
-    acc_bool = np.array([min_errors[i] <= theta  for i in range(len(min_errors))])
-    acc = np.mean(acc_bool)
-    print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
+print(pred_list)            
+# thresholds = [theta for theta in range(0, 95, 5)]
+# acc_list = []
+# for theta in thresholds:
+#     acc_bool = np.array([min_errors[i] <= theta  for i in range(len(min_errors))])
+#     acc = np.mean(acc_bool)
+#     acc_list.append(acc)
+#     # print("Accuracy at theta = {} is: {:.4f}".format(theta, acc))
 
+# print("acc = ",  acc_list)
+# f = open("acc_{}.txt".format(scan), "w+")
+# print("acc = ",  acc_list, file=f)
+# f.close()
