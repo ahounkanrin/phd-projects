@@ -59,9 +59,9 @@ if __name__ == "__main__":
                 "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.045Y.M.CT.59470", "SMIR.Body.049Y.M.CT.57791", 
                 "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
     
-    scan = testScans[0]
+    scan = trainScans[20]
     
-    save_dir = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/test2/{}/s100/".format(scan)
+    save_dir = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/data-rx/train-val/{}/s100/".format(scan)
     imgpath = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/{}/{}.nii".format(scan, scan)
     N = 512 
     print("INFO: loading CT {}...".format(scan))
@@ -96,13 +96,13 @@ if __name__ == "__main__":
     projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
 
     def render_view(viewpoint):
-        theta_x = 0 #np.random.randint(-10, 10)
+        theta_x = viewpoint[0] #np.random.randint(-10, 10)
         theta_y = 0 #np.random.randint(-10, 10)
-        theta_z = viewpoint[0]
+        theta_z = 0 #viewpoint[0]
         tx = viewpoint[1]
         ty = viewpoint[2]
         tic_rendering = time.time()
-        rotationMatrix = Rz(theta_z) # Rx(theta_x) @ Ry(theta_y) 
+        rotationMatrix = Rx(theta_x) # Rx(theta_x) @ Ry(theta_y) 
         projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
         projectionSliceFFT = interpn(points=(x, y, z), values=voiFFTShifted, xi=projectionSlice, method="linear",
                                      bounds_error=False)      
@@ -112,12 +112,12 @@ if __name__ == "__main__":
         #img = img[56+tx:456+tx, 56+ty:456+ty]
         #img = cv.resize(img, (400, 400), interpolation=cv.INTER_AREA)
         #img = img[56+tx:456+tx, 56+ty:456+ty]
-        cv.imwrite(save_dir+"{}.png".format(theta_z), img)
+        cv.imwrite(save_dir+"{}.png".format(theta_x+30), img)
         toc_rendering = time.time()
-        print("theta = {}\t {:.2f} seconds".format(theta_z, toc_rendering-tic_rendering))
+        print("theta = {}\t {:.2f} seconds".format(theta_x, toc_rendering-tic_rendering))
         
 
-    viewpoints = [(i, 0, 0) for i in range(0, 360, 1)]
+    viewpoints = [(i, 0, 0) for i in range(-30, 31, 1)]
     for viewpoint in viewpoints:
         render_view(viewpoint)
 

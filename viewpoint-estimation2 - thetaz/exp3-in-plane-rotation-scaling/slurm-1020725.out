@@ -1,0 +1,15 @@
+2021-05-15 02:35:09.718169: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudart.so.10.1
+2021-05-15 02:35:42.873785: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcuda.so.1
+2021-05-15 02:35:42.902248: E tensorflow/stream_executor/cuda/cuda_driver.cc:314] failed call to cuInit: CUDA_ERROR_UNKNOWN: unknown error
+2021-05-15 02:35:42.903423: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:169] retrieving CUDA diagnostic information for host: srvcntgpu003.uct.ac.za
+2021-05-15 02:35:42.904327: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:176] hostname: srvcntgpu003.uct.ac.za
+2021-05-15 02:35:42.905228: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:200] libcuda reported version is: Invalid argument: expected %d.%d, %d.%d.%d, or %d.%d.%d.%d form for driver version; got "1"
+2021-05-15 02:35:42.906135: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:204] kernel reported version is: 440.64.0
+2021-05-15 02:35:42.941955: I tensorflow/core/platform/profile_utils/cpu_utils.cc:104] CPU Frequency: 2100095000 Hz
+2021-05-15 02:35:42.944780: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x40c9470 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2021-05-15 02:35:42.945736: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+  0%|          | 0/100 [00:00<?, ?it/s]2021-05-15 02:36:21.510300: I tensorflow/core/kernels/data/shuffle_dataset_op.cc:172] Filling up shuffle buffer (this may take a while): 382 of 1024
+2021-05-15 02:36:32.363992: I tensorflow/core/kernels/data/shuffle_dataset_op.cc:172] Filling up shuffle buffer (this may take a while): 650 of 1024
+2021-05-15 02:36:41.510673: I tensorflow/core/kernels/data/shuffle_dataset_op.cc:172] Filling up shuffle buffer (this may take a while): 873 of 1024
+2021-05-15 02:36:45.402314: I tensorflow/core/kernels/data/shuffle_dataset_op.cc:221] Shuffle buffer filled.
+slurmstepd: error: *** JOB 1020725 ON srvcntgpu003 CANCELLED AT 2021-05-15T09:52:34 ***
