@@ -80,7 +80,7 @@ scales = ["80", "90", "100", "110", "120"]
 testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Body.037Y.F.CT.57796", "SMIR.Body.040Y.M.CT.57768", 
         "SMIR.Body.045Y.M.CT.59470", "SMIR.Body.049Y.M.CT.57791", "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
 
-scan = testScans[3]
+scan = testScans[4]
 min_errors = []
 #err_list = []
 pred_list = []
