@@ -20,16 +20,16 @@ acc_trans_scale_400x400 = [0.79826389, 0.99583333, 0.99895833, 0.99930556, 0.999
 
 
 plt.figure(figsize=[8, 5])
-plt.title(r"Angle $\theta_z$ estimation: $200\times 200$ Vs $400 \times 400$ subimages")
+#plt.title(r"Angle $\theta_z$ estimation: $200\times 200$ Vs $400 \times 400$ subimages")
 plt.ylabel("Accuracy")
 plt.xlabel("Threshold (degrees)")
 plt.xticks(ticks=[i for i in range(0, 95, 10)])
 plt.yticks(ticks=[i/10 for i in range(11)])
-plt.plot(thresholds, acc_ref_200x200, label=r"Reference ($200\times 200$)")
-plt.plot(thresholds, acc_ref_400x400, label=r"Reference ($400\times 400$)")
+plt.plot(thresholds, acc_ref_200x200, label=r" $200\times 200$")
+plt.plot(thresholds, acc_ref_400x400, label=r"$400\times 400$")
 
-plt.plot(thresholds, acc_trans_scale_200x200, label=r"Translation and scaling ($200\times 200$)")
-plt.plot(thresholds, acc_trans_scale_400x400, label=r"Translation and scaling ($400\times 400$)")
+#plt.plot(thresholds, acc_trans_scale_200x200, label=r"Translation and scaling ($200\times 200$)")
+#plt.plot(thresholds, acc_trans_scale_400x400, label=r"Translation and scaling ($400\times 400$)")
 
 plt.legend(loc="lower right")
 plt.grid(True)

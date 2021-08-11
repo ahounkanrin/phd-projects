@@ -1,3 +1,4 @@
+from re import search, template
 import numpy as np
 import keras
 from keras.utils import multi_gpu_model
@@ -57,15 +58,22 @@ y_test = y2
 
 for i in tqdm(range(len(x1))):
     img = x1[i]
-    img = cv.resize(np.squeeze(img), (32, 32), interpolation=cv.INTER_NEAREST)
-    x_train[i] = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
+    clahe = cv.createCLAHE(clipLimit=2.55, tileGridSize=(8,8))
+    #img = cv.resize(np.squeeze(img), (32, 32), interpolation=cv.INTER_NEAREST)
+    img_r = img
+    img_g = clahe.apply(img)
+    img_b = cv.fastNlMeansDenoising(img, h=2, templateWindowSize=4, searchWindowSize=4)
+    x_train[i] = np.stack([img_r, img_g, img_b], axis=-1)
 x_train = np.asarray(x_train)
 print("shape of x_train:", x_train.shape)
 
 for i in tqdm(range(len(x2))):
     img = x2[i]
-    img = cv.resize(np.squeeze(img), (32, 32), interpolation=cv.INTER_NEAREST)
-    x_test[i] = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
+    #img = cv.resize(np.squeeze(img), (32, 32), interpolation=cv.INTER_NEAREST)
+    img_r = img
+    img_g = clahe.apply(img)
+    img_b = cv.fastNlMeansDenoising(img, h=2, templateWindowSize=4, searchWindowSize=4)
+    x_test[i] = np.stack([img_r, img_g, img_b], axis=-1)
 x_test = np.asarray(x_test)
 print("shape of x_test", x_test.shape)
 

@@ -34,7 +34,7 @@ def preprocess(x, y):
 def rotate_plane(plane, rotationMatrix): 
 	return np.matmul(rotationMatrix, plane)
 
-
+H = lambda p: -p*tf.math.log(p)
 
 # Load ct volume
 INPUT_SIZE = (200, 200)
@@ -78,14 +78,17 @@ scales = ["80", "90", "100", "110", "120"]
 testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Body.037Y.F.CT.57796", "SMIR.Body.040Y.M.CT.57768", 
         "SMIR.Body.045Y.M.CT.59470", "SMIR.Body.049Y.M.CT.57791", "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
 
-scan = testScans[7]
+scan = testScans[0]
 min_errors = []
 #err_list = []
 pred_list = []
+entropy_list = []
 for view_id in tqdm(range(0, 360), desc="\n{}".format(scan)):
     err_list = []
     
     img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/normals/test2/{}/s100/{}.png".format(scan, view_id), 0)
+    y_test = np.array(one_hot_encoding(view_id))
+    gt = np.argmax(y_test)
     #img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/SMIR.Body.025Y.M.CT.57697/{}/{}.png".format(view_id, view_id), 0)
     for ty in range(1): # Try -20, 21, 2
         for tx in range(1):
@@ -94,16 +97,20 @@ for view_id in tqdm(range(0, 360), desc="\n{}".format(scan)):
             img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
             img = img/255.0
             x_test = np.expand_dims(img, axis=0)
-            y_test = np.array(one_hot_encoding(view_id))        
-            pred = np.argmax(test_step(x_test, y_test)) 
-            gt = np.argmax(y_test) 
-            #error = geodesic_distance([gt, pred])
-            error = angular_distance(gt, pred) 
-            #print("Error = {:.4f}".format(error))
-            err_list.append(error)
-            pred_list.append(pred)
+                    
+            preds_vector = test_step(x_test, y_test)
+            pred_entropy = tf.map_fn(H, preds_vector) 
+            entropy = tf.math.reduce_sum(pred_entropy)       
+            pred = np.argmax(preds_vector) 
             
-    min_errors.append(np.min(err_list))
+            #error = geodesic_distance([gt, pred])
+            #error = angular_distance(gt, pred) 
+            #print("Error = {:.4f}".format(error))
+            #err_list.append(error)
+            pred_list.append(pred)
+            entropy_list.append(entropy)
+    pred_opt = pred_list[np.argmin(entropy_list)]        
+    min_errors.append(angular_distance(gt, pred_opt) )
 
 #print(pred_list)            
 thresholds = [theta for theta in range(0, 95, 5)]
