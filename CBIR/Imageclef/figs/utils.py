@@ -5,7 +5,7 @@ from scipy.linalg import logm
 import tensorflow as tf
 from scipy import ndimage
 from matplotlib import pyplot as plt
-
+import pandas as pd
 
 epsilon = 1e-30
 
@@ -114,12 +114,59 @@ def geom_cross_entropy(predictions, labels):
     loss = - weights * pred_log
     return loss
 
+
+train_df = pd.read_csv("train_old.csv", sep=";")
+test_df = pd.read_csv("test_old.csv", sep=";")
+classes = sorted(list(set(train_df["irma_code"])))
+decod_dict = dict((x, y) for x,y in enumerate(classes))
+def irma_distance(code1, code2):
+    code1_axis_T, code1_axis_D, code1_axis_A, code1_axis_B = code1.split("-")
+    code2_axis_T, code2_axis_D, code2_axis_A, code2_axis_B = code2.split("-")
+    error_T = 0.
+    for i in range(4):
+        error_T += 1./(i+1) * int(code1_axis_T[i] != code2_axis_T[i]) # int(code1_axis_T[i] != code2_axis_T[i]) is an indicator function that outputs 1 if characters don't match and 0 otherwise   
+    error_T = error_T * 0.25 / (1 + 1/2 + 1/3 + 1/4)
+
+    error_D = 0.
+    for i in range(3):
+        error_D += 1./(i+1) * int(code1_axis_D[i] != code2_axis_D[i])   
+    error_D = error_D * 0.25 / (1 + 1/2 + 1/3)
+
+    error_A = 0.
+    for i in range(3):
+        error_A += 1./(i+1) * int(code1_axis_A[i] != code2_axis_A[i])   
+    error_A = error_A * 0.25 / (1 + 1/2 + 1/3)
+
+    error_B = 0.
+    for i in range(3):
+        error_B += 1./(i+1) * int(code1_axis_B[i] != code2_axis_B[i])   
+    error_B = error_B * 0.25 / (1 + 1/2 + 1/3)
+    error = error_A + error_B + error_D + error_T
+    return error
+
+def irma_get_weights(gt_class, sigma=20): 
+    k = [i for i in range(193)]
+    gt = [gt_class for i in range(193)]
+    k_codes = [decod_dict[i] for i in k]
+    gt_codes = [decod_dict[i] for i in gt]
+    distances= np.array([irma_distance(k_codes[i], gt_codes[i]) for i in range(193)])
+    weights = np.exp(-sigma * distances)
+    return weights
+
+def irma_cross_entropy(predictions, labels):
+    gt_classes = tf.argmax(labels, axis=-1)
+    #gt_classes = tf.cast(gt_classes, dtype=tf.float32)
+    weights = tf.map_fn(lambda x: irma_get_weights(x), gt_classes, fn_output_signature=tf.float32)
+    pred_log = tf.math.log(predictions + epsilon)
+    loss = - weights * pred_log
+    return loss
+
 if __name__ == "__main__":
-    weights = get_weights(25)
+    weights = irma_get_weights(150)
     plt.plot(np.arange(193), weights, ".")
     plt.xlabel("Classes")
     plt.ylabel("Weights")
-    plt.savefig("class_weights.png")
+    plt.savefig("irma_class_weights_150.png")
     #print(weights)
 
     

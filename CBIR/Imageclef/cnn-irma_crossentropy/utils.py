@@ -4,7 +4,8 @@ import numpy as np
 from scipy.linalg import logm
 import tensorflow as tf
 from scipy import ndimage
-
+import pandas as pd
+from tensorflow.python.framework.ops import name_scope
 
 epsilon = 1e-30
 
@@ -97,24 +98,11 @@ def preprocess(x, y):
     x = tf.divide(x, tf.constant(255.0, dtype=tf.float32))
     return x, y
 
-def angular_distance(angle1, angle2):
-    angle1 = tf.cast(angle1, dtype=tf.float32)
-    angle2 = tf.cast(angle2, dtype=tf.float32)
-    dist1 = tf.math.mod(tf.math.abs(angle1 - angle2), 180)
-    dist2 = 180 - dist1
-    dist = tf.where(dist1>90, x=dist2, y=dist1)
-    return dist
 
-def angular_distance2(angle1, angle2):
-    dist1 = tf.math.mod(tf.math.abs(angle1 - angle2), 360)
-    dist2 = 360 - dist1
-    dist = tf.where(dist1>180, x=dist2, y=dist1)
-    return dist
-
-def get_weights(gt_class, sigma=7.0): 
-    k = tf.constant([i for i in range(360)], dtype=tf.float32)
-    gt = gt_class * tf.ones(shape=(360))
-    distances = angular_distance2(gt, k)
+def get_weights(gt_class, sigma=0.50): 
+    k = tf.constant([i for i in range(193)], dtype=tf.float32)
+    gt = gt_class * tf.ones(shape=(193))
+    distances = tf.math.abs(gt - k)
     weights = tf.math.exp(-distances/sigma)
     return weights
 
@@ -126,7 +114,53 @@ def geom_cross_entropy(predictions, labels):
     loss = - weights * pred_log
     return loss
 
+train_df = pd.read_csv("train_old.csv", sep=";")
+test_df = pd.read_csv("test_old.csv", sep=";")
+classes = sorted(list(set(train_df["irma_code"])))
+decod_dict = dict((x, y) for x,y in enumerate(classes))
+# keys_tensor = tf.constant(list(decod_dict.keys()), dtype=tf.int32)
+# vals_tensor = tf.constant(list(decod_dict.values()))
+# table = tf.lookup.StaticHashTable(tf.lookup.KeyValueTensorInitializer(keys_tensor, vals_tensor), default_value="x")
 
 
-    
+def irma_distance(code1, code2):
+    code1_axis_T, code1_axis_D, code1_axis_A, code1_axis_B = code1.split("-")
+    code2_axis_T, code2_axis_D, code2_axis_A, code2_axis_B = code2.split("-")
+    error_T = 0.
+    for i in range(4):
+        error_T += 1./(i+1) * int(code1_axis_T[i] != code2_axis_T[i]) # int(code1_axis_T[i] != code2_axis_T[i]) is an indicator function that outputs 1 if characters don't match and 0 otherwise   
+    error_T = error_T * 0.25 / (1 + 1/2 + 1/3 + 1/4)
 
+    error_D = 0.
+    for i in range(3):
+        error_D += 1./(i+1) * int(code1_axis_D[i] != code2_axis_D[i])   
+    error_D = error_D * 0.25 / (1 + 1/2 + 1/3)
+
+    error_A = 0.
+    for i in range(3):
+        error_A += 1./(i+1) * int(code1_axis_A[i] != code2_axis_A[i])   
+    error_A = error_A * 0.25 / (1 + 1/2 + 1/3)
+
+    error_B = 0.
+    for i in range(3):
+        error_B += 1./(i+1) * int(code1_axis_B[i] != code2_axis_B[i])   
+    error_B = error_B * 0.25 / (1 + 1/2 + 1/3)
+    error = error_A + error_B + error_D + error_T
+    return error
+
+def irma_get_weights(gt_class, sigma=100): 
+    k = [i for i in range(193)]
+    gt = [gt_class.numpy() for i in range(193)]
+    k_codes = [decod_dict[i] for i in k]
+    gt_codes = [decod_dict[i] for i in gt]
+    distances= np.array([irma_distance(k_codes[i], gt_codes[i]) for i in range(193)])
+    weights = np.exp(-sigma * distances)
+    return weights
+
+def irma_cross_entropy(predictions, labels):
+    gt_classes = tf.argmax(labels, axis=-1)
+    #gt_classes = tf.cast(gt_classes, dtype=tf.float32)
+    weights = tf.map_fn(lambda x: irma_get_weights(x), gt_classes, fn_output_signature=tf.float32)
+    pred_log = tf.math.log(predictions + epsilon)
+    loss = - weights * pred_log
+    return loss

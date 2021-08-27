@@ -10,7 +10,7 @@ from scipy.fft import fftn, fftshift, ifft2
 import cv2 as cv
 from multiprocessing import Pool, cpu_count
 import random
-from utils import one_hot_encoding, geodesic_distance, geom_cross_entropy
+from utils import one_hot_encoding, geodesic_distance, angular_distance
 from tqdm import tqdm
 
 random.seed(0)
@@ -96,7 +96,7 @@ del voiShifted
 voiFFTShifted = np.fft.fftshift(voiFFT)
 del voiFFT
 
-ctVolume_val = nib.load(imgpath_val).get_fdata().astype(int)
+ctVolume_val = nib.load(imgpath_test).get_fdata().astype(int)
 ctVolume_val = np.squeeze(ctVolume)
 voi_val = ctVolume_val[:,:, :N] # Extracts volume of interest from the full body ct volume
 #voi = normalize(voi)    # Rescale CT numbers between 0 and 255
@@ -219,10 +219,8 @@ def train_step(images, labels):
 @tf.function
 def test_step(images, labels):
     #with tf.device("/gpu:1"):
-    predx, predz = model(images, training=True)
-    test_lossx.update_state(labels, predx)
-    #test_lossy.update_state(labels, predy)
-    test_lossz.update_state(labels, predz)
+    predx, predz = model(images, training=False)
+    return predx, predz
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
@@ -230,79 +228,75 @@ checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-thetax_th
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=20)
+checkpoint.restore(manager.checkpoints[-1])
 
 step = 0
 epoch = 0
-while True:
-    tic = time.time()
-    x_train = []
-    y_train = []
-    train_viewpoints_batch = select_viewpoints(args.batch_size)
-    with Pool() as pool:
-        train_batch = pool.map(generate_train_data, train_viewpoints_batch)
 
-    train_batch = np.array(train_batch)
-    for i in range(len(train_batch)):
-        x_train.append(train_batch[i, 0])
-        y_train.append(train_batch[i, 1])
+tic = time.time()
 
-    x_train = np.array(x_train)
-    y_train = np.array(y_train)
-    train_data = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(args.batch_size)
-    
-    # Save logs with TensorBoard Summary
-    if step == 0:
-        train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-thetax_thetay/logs/train"
-        val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-thetax_thetay/logs/val"
-        train_summary_writer = tf.summary.create_file_writer(train_logdir)
-        val_summary_writer = tf.summary.create_file_writer(val_logdir)
-    
-    for images, labels in train_data.map(preprocess, num_parallel_calls=tf.data.experimental.AUTOTUNE):
-        train_loss = train_step(images, labels)
-        step += 1
-        with train_summary_writer.as_default():
-            tf.summary.scalar("loss", train_loss, step=step)
-            #tf.summary.scalar("accuracy", train_accuracy.result(), step=step)
-            tf.summary.image("image", images, step=step, max_outputs=2)
-        toc = time.time()
-        print("Step {}: \t loss = {:.4f}  \t ({:.2f} seconds/step)".format(step, 
-                train_loss, toc-tic))
-        # Reset metrics for the next iteration
-        #train_accuracy.reset_states()
-    
-    if step % 5000 == 0:
-        epoch += 1
+x_val = []
+y_val = []
+val_viewpoints_batch = select_viewpoints(1000)
+with Pool() as pool:
+    val_batch = pool.map(generate_val_data, val_viewpoints_batch)
 
-        x_val = []
-        y_val = []
-        val_viewpoints_batch = select_viewpoints(200*args.batch_size)
-        with Pool() as pool:
-            val_batch = pool.map(generate_val_data, val_viewpoints_batch)
+val_batch = np.array(val_batch)
+for i in range(len(val_batch)):
+    x_val.append(val_batch[i, 0])
+    y_val.append(val_batch[i, 1])
 
-        val_batch = np.array(val_batch)
-        for i in range(len(val_batch)):
-            x_val.append(val_batch[i, 0])
-            y_val.append(val_batch[i, 1])
+x_val = np.array(x_val)
+y_val = np.array(y_val)
+val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(1)
+preds_x = []
+preds_z = []
+gt_x = []
+gt_z = []
+for test_images, test_labels in tqdm(val_data.map(preprocess, 
+                                        num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):                                  
+    predx, predz = test_step(test_images, test_labels)
+    preds_x.append(predx)
+    preds_z.append(predz)
+    gt_x.append(test_labels[0, 0])
+    gt_z.append(test_labels[0, 2])
 
-        x_val = np.array(x_val)
-        y_val = np.array(y_val)
-        val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
+errors_x = [tf.squeeze(angular_distance(gt_x[i], preds_x[i])) for i in range(len(gt_x))]
+errors_z = [tf.squeeze(angular_distance(gt_z[i], preds_z[i])) for i in range(len(gt_z))]
+#print(errors_z)
+thresholds = [theta for theta in range(0, 95, 10)]
 
-        for test_images, test_labels in tqdm(val_data.map(preprocess, 
-                                                num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
-            test_step(test_images, test_labels)
-        test_loss = test_lossx.result()/(90.0**2)  + test_lossz.result()/(360.0**2)
-        with val_summary_writer.as_default():
-            tf.summary.scalar("val_loss", test_loss, step=epoch)
-            #tf.summary.scalar("val_accuracy", test_accuracy.result(), step=epoch)
-            tf.summary.image("val_images", test_images, step=epoch, max_outputs=2)
+print("\n\nMedian Error = {:.4f}".format(np.median(np.array(errors_x))))
+with open("mederr.txt", "w") as f:
+    print("Median Error = {:.4f}".format(np.median(np.array(errors_x))), file=f)
 
-        ckpt_path = manager.save()
-        template = "Epoch {}, Validation Loss: {:.4f}, ckpt {}\n\n"
-        print(template.format(epoch, test_loss, ckpt_path))
-        
-        # Reset metrics for the next epoch
-        #test_accuracy.reset_states()
-        test_lossx.reset_states()
-        #test_lossy.reset_states()
-        test_lossz.reset_states()
+acc_theta_x = []
+
+for theta in thresholds:
+    acc_bool_x = np.array([errors_x[i] <= theta  for i in range(len(errors_x))])
+    accx = np.mean(acc_bool_x)
+    acc_theta_x.append(accx)
+    print("Accuracy at thetax = {} is: {:.4f}".format(theta, accx))
+
+acc_theta_z = []
+
+for theta in thresholds:
+    acc_bool_z = np.array([errors_z[i] <= theta  for i in range(len(errors_z))])
+    accz = np.mean(acc_bool_z)
+    acc_theta_z.append(accz)
+    print("Accuracy at thetaz = {} is: {:.4f}".format(theta, accz))
+
+plt.figure(figsize=[8, 5])
+#plt.title("Accuracy of the CNN")
+#plt.figure()
+plt.ylabel("Accuracy")
+plt.xlabel("Threshold (degrees)")
+plt.xticks(ticks=[i for i in range(0, 95, 10)])
+plt.yticks(ticks=[i/10 for i in range(11)])
+plt.plot(thresholds, acc_theta_x, label=r"Rotation angle $\theta_x$")
+#plt.plot(thresholds, acc_thetay, label=r"Rotation angle $\theta_y$")
+plt.plot(thresholds, acc_theta_z, label=r"Rotation angle $\theta_z$")
+
+plt.legend(loc="lower right")
+plt.grid(True)
+plt.savefig("accuracy.png")

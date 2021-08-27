@@ -71,7 +71,7 @@ def test_step(images, labels):
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation4-thetay/exp1-no-aug/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation4-thetax/exp1-no-aug/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
@@ -94,7 +94,7 @@ for scan in testScans:
     for view_id in tqdm(range(0, nclasses), desc="\n{}".format(scan)):
         err_list = []
         #for scale in scales:
-        img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/data-ry/normal/test/{}/s{}/{}.png".format(scan, scale, view_id), 0)
+        img_test = cv.imread("/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/data-rx/normals/test/{}/s{}/{}.png".format(scan, scale, view_id), 0)
         for ty in range(1):
             for tx in range(1):
                 img = img_test[56+ty:456+ty, 56+tx:456+tx]

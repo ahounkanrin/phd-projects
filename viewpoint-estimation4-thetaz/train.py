@@ -15,7 +15,7 @@ from utils import geom_cross_entropy
 print("INFO: Processing dataset...")
 INPUT_SIZE = (200, 200)
 nclasses = 360
-data_dir = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/data-ry/train-val/"
+data_dir = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody2d/data-rz/train-val/"
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -111,15 +111,15 @@ test_accuracy = tf.keras.metrics.CategoricalAccuracy(name="test_accuracy")
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation4-thetay/exp1-no-aug/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation4-thetaz/exp1-no-aug/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=50)
 
 
 # Save logs with TensorBoard Summary
-train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation4-thetay/exp1-no-aug/logs/train"
-val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation4-thetay/exp1-no-aug/logs/val"
+train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation4-thetaz/exp1-no-aug/logs/train"
+val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation4-thetaz/exp1-no-aug/logs/val"
 train_summary_writer = tf.summary.create_file_writer(train_logdir)
 val_summary_writer = tf.summary.create_file_writer(val_logdir)
 
