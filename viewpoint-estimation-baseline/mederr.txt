@@ -1,1 +1,0 @@
-Median Error = 37.4058

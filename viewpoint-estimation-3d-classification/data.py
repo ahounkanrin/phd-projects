@@ -49,6 +49,11 @@ if __name__ == "__main__":
                 "SMIR.Body.045Y.M.CT.59481", "SMIR.Body.047Y.F.CT.57792", "SMIR.Body.049Y.M.CT.59482", 
                 "SMIR.Body.052Y.M.CT.57765", "SMIR.Body.052Y.M.CT.59475",  "SMIR.Body.057Y.F.CT.57793", 
                  "SMIR.Body.057Y.M.CT.59483", "SMIR.Body.058Y.M.CT.57767"]
+
+    testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Body.037Y.F.CT.57796", 
+            "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.045Y.M.CT.59470", "SMIR.Body.049Y.M.CT.57791", 
+            "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
+
     # # Load ct volume
     # ctID = trainScans[0]
 
@@ -118,7 +123,7 @@ if __name__ == "__main__":
     image_name = []
 
     viewpoints = [(x, 0, z) for  x in elevation for z in azimuth]
-    for ctID in trainScans:
+    for ctID in testScans:
         for viewpoint in viewpoints:
             #render_view(viewpoint)
             labels_x.append(viewpoint[0])
@@ -127,4 +132,4 @@ if __name__ == "__main__":
     df["image"] = image_name
     df["elevation"] = labels_x
     df["azimuth"] = labels_z
-    df.to_csv("train.csv", sep=",", index=False)
+    df.to_csv("test.csv", sep=",", index=False)

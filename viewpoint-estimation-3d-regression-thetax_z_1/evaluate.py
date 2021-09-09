@@ -71,43 +71,31 @@ testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Bod
             "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.045Y.M.CT.59470", "SMIR.Body.049Y.M.CT.57791", 
             "SMIR.Body.056Y.F.CT.59474", "SMIR.Body.057Y.F.CT.59693"]
 
-trainScan = trainScans[0]
-valScan = trainScans[1]
+#trainScan = trainScans[0]
+#valScan = trainScans[1]
 testScan = testScans[0]
 
 # Load ct volume
 INPUT_SIZE = (200, 200)
-imgpath_train = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/{}/{}.nii".format(trainScan, trainScan)
-imgpath_val = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/{}/{}.nii".format(valScan, valScan)
+#imgpath_train = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/{}/{}.nii".format(trainScan, trainScan)
+#imgpath_val = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/{}/{}.nii".format(valScan, valScan)
 imgpath_test = "/scratch/hnkmah001/Datasets/ctfullbody/ctfullbody/{}/{}.nii".format(testScan, testScan)
 
 N = 512 
 print("INFO: loading CT volume...")
-ctVolume = nib.load(imgpath_train).get_fdata().astype(int)
-ctVolume = np.squeeze(ctVolume)
-voi = ctVolume[:,:, :N] # Extracts volume of interest from the full body ct volume
-#voi = normalize(voi)    # Rescale CT numbers between 0 and 255
-voi = voi - np.min(voi)
-voi = np.pad(voi, N//2, "constant", constant_values=0)
-voiShifted = np.fft.fftshift(voi)
-del voi
-voiFFT = np.fft.fftn(voiShifted)
-del voiShifted
-voiFFTShifted = np.fft.fftshift(voiFFT)
-del voiFFT
 
-ctVolume_val = nib.load(imgpath_test).get_fdata().astype(int)
-ctVolume_val = np.squeeze(ctVolume)
-voi_val = ctVolume_val[:,:, :N] # Extracts volume of interest from the full body ct volume
+ctVolume_test = nib.load(imgpath_test).get_fdata().astype(int)
+ctVolume_test = np.squeeze(ctVolume_test)
+voi_test = ctVolume_test[:,:, :N] # Extracts volume of interest from the full body ct volume
 #voi = normalize(voi)    # Rescale CT numbers between 0 and 255
-voi_val = voi_val - np.min(voi_val)
-voi_val = np.pad(voi_val, N//2, "constant", constant_values=0)
-voiShifted_val = np.fft.fftshift(voi_val)
-del voi_val
-voiFFT_val = np.fft.fftn(voiShifted_val)
-del voiShifted_val
-voiFFTShifted_val = np.fft.fftshift(voiFFT_val)
-del voiFFT_val
+voi_test = voi_test - np.min(voi_test)
+voi_test = np.pad(voi_test, N//2, "constant", constant_values=0)
+voiShifted_test = np.fft.fftshift(voi_test)
+del voi_test
+voiFFT_test = np.fft.fftn(voiShifted_test)
+del voiShifted_test
+voiFFTShifted_test = np.fft.fftshift(voiFFT_test)
+del voiFFT_test
 
 print("3D FFT computed.")
 
@@ -120,39 +108,21 @@ z_axis = np.linspace(-N+0.5, N-0.5, 2*N)
 projectionPlane = np.array([[xi, 0, zi] for xi in x_axis for zi in z_axis])
 projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
 
-def generate_train_data(viewpoint):
-    theta_x = viewpoint[0]
-    theta_y = viewpoint[1]
-    theta_z = viewpoint[2]
-    #tx = viewpoint[1]
-    #ty = viewpoint[2]
-    rotationMatrix = Rx(theta_x) @ Ry(theta_y) @ Rz(theta_z)
-    projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
-    projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=voiFFTShifted, xi=projectionSlice, method="linear",
-                                    bounds_error=False, fill_value=0)      
-    img = np.abs(fftshift(ifft2(projectionSliceFFT)))
-    img = img[N//2:N+N//2, N//2:N+N//2]
-    img = normalize(img)
-    #img = img[56+tx:456+tx, 56+ty:456+ty]
-    img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
-    img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-    label = np.array([theta_x, theta_y, theta_z])
-    return img, label
 
-def generate_val_data(viewpoint):
+def generate_test_data(viewpoint):
     theta_x = viewpoint[0]
     theta_y = viewpoint[1]
     theta_z = viewpoint[2]
-    #tx = viewpoint[1]
-    #ty = viewpoint[2]
+    tx = 0
+    ty = 0
     rotationMatrix = Rx(theta_x) @ Ry(theta_y) @ Rz(theta_z)
     projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
-    projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=voiFFTShifted_val, xi=projectionSlice, method="linear",
+    projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=voiFFTShifted_test, xi=projectionSlice, method="linear",
                                     bounds_error=False, fill_value=0)      
     img = np.abs(fftshift(ifft2(projectionSliceFFT)))
     img = img[N//2:N+N//2, N//2:N+N//2]
     img = normalize(img)
-    #img = img[56+tx:456+tx, 56+ty:456+ty]
+    img = img[56+tx:456+tx, 56+ty:456+ty]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
     label = np.array([theta_x, theta_y, theta_z])
@@ -185,36 +155,11 @@ model = tf.keras.Model(inputs=inputs, outputs=[outputx,  outputz]) #outputy,
 model.summary()
 
 # Define cost function, optimizer and metrics
-loss_objectx = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.AUTO)
-loss_objecty = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.AUTO)
-loss_objectz = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.AUTO)
-
-test_lossx = tf.keras.metrics.MeanSquaredError()
-#test_lossy = tf.keras.metrics.MeanSquaredError()
-test_lossz = tf.keras.metrics.MeanSquaredError()
-
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=1000, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
 #train_accuracy = tf.keras.metrics.CategoricalAccuracy(name="train_accuracy")
 test_accuracy = tf.keras.metrics.CategoricalAccuracy(name="test_accuracy")
-
-@tf.function
-def train_step(images, labels):
-    # All ops involving trainable variables under the GradientTape context manager are recorded for gradient computation
-    #with tf.device("/gpu:1"):
-    with tf.GradientTape() as tape:
-        predx, predz = model(images, training=True)
-        lossx = loss_objectx(labels, predx)
-        #lossy = loss_objecty(labels, predy)
-        lossz = loss_objectz(labels, predz)
-        loss = tf.divide(lossx, tf.constant(180.0**2)) + tf.divide(lossz, tf.constant(360.0**2)) # + tf.divide(lossy, tf.constant(60.0**2)) 
-        #loss = tf.reduce_sum(loss)/images.shape[0]    # use images.shape[0] instead of args.batch_size
-    
-    # Calculate gradients of cost function w.r.t trainable variables and release resources held by GradientTape
-    gradients = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    return loss
 
 @tf.function
 def test_step(images, labels):
@@ -224,7 +169,7 @@ def test_step(images, labels):
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-thetax_thetay/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d-regression-thetax_z_1/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=20)
@@ -235,29 +180,29 @@ epoch = 0
 
 tic = time.time()
 
-x_val = []
-y_val = []
-val_viewpoints_batch = select_viewpoints(1000)
+x_test = []
+y_test = []
+test_viewpoints_batch = select_viewpoints(1000)
 with Pool() as pool:
-    val_batch = pool.map(generate_val_data, val_viewpoints_batch)
+    test_batch = pool.map(generate_test_data, test_viewpoints_batch)
 
-val_batch = np.array(val_batch)
-for i in range(len(val_batch)):
-    x_val.append(val_batch[i, 0])
-    y_val.append(val_batch[i, 1])
+test_batch = np.array(test_batch)
+for i in range(len(test_batch)):
+    x_test.append(test_batch[i, 0])
+    y_test.append(test_batch[i, 1])
 
-x_val = np.array(x_val)
-y_val = np.array(y_val)
-val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(1)
+x_test = np.array(x_test)
+y_test = np.array(y_test)
+test_data = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(1)
 preds_x = []
 preds_z = []
 gt_x = []
 gt_z = []
-for test_images, test_labels in tqdm(val_data.map(preprocess, 
-                                        num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):                                  
+for test_images, test_labels in tqdm(test_data.map(preprocess, 
+                                        num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Testing"):                                  
     predx, predz = test_step(test_images, test_labels)
-    preds_x.append(predx)
-    preds_z.append(predz)
+    preds_x.append(tf.squeeze(predx))
+    preds_z.append(tf.squeeze(predz))
     gt_x.append(test_labels[0, 0])
     gt_z.append(test_labels[0, 2])
 
@@ -280,6 +225,9 @@ for theta in thresholds:
 
 acc_theta_z = []
 
+print("\n\nMedian Error = {:.4f}".format(np.median(np.array(errors_z))))
+with open("mederr.txt", "w") as f:
+    print("Median Error = {:.4f}".format(np.median(np.array(errors_z))), file=f)
 for theta in thresholds:
     acc_bool_z = np.array([errors_z[i] <= theta  for i in range(len(errors_z))])
     accz = np.mean(acc_bool_z)

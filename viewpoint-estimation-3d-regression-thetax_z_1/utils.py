@@ -4,6 +4,7 @@ import numpy as np
 from scipy.linalg import logm
 import tensorflow as tf
 from scipy import ndimage
+from tensorflow.python.keras.backend import dtype
 
 
 epsilon = 1e-30
@@ -128,5 +129,7 @@ def geom_cross_entropy(predictions, labels):
 
 
 
-    
-
+def trigMSE(predictions, labels):
+    loss_batch = tf.ones_like(predictions) - tf.math.cos(tf.cast(labels, dtype=tf.float32) - predictions)
+    #loss = tf.math.reduce_mean(loss_batch)
+    return loss_batch

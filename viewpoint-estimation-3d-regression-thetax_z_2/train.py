@@ -1,3 +1,4 @@
+from numpy.lib.twodim_base import tri
 import tensorflow as tf
 import argparse
 import os
@@ -7,10 +8,12 @@ import numpy as np
 import time
 from scipy.interpolate import interpn
 from scipy.fft import fftn, fftshift, ifft2
+from tensorflow.python.keras.backend import shape
+from tensorflow.python.ops.linalg_ops import norm
 import cv2 as cv
 from multiprocessing import Pool, cpu_count
 import random
-from utils import one_hot_encoding, geodesic_distance, geom_cross_entropy
+from utils import trigMSE, euler_to_quaternion, quaternionDistance
 from tqdm import tqdm
 
 random.seed(0)
@@ -19,7 +22,7 @@ tf.random.set_seed(0)
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
-    parser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--learning_rate", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--epochs", type=int, default=200, help="Number of training iteration")
     return parser.parse_args()
 args = get_arguments()
@@ -27,24 +30,28 @@ args = get_arguments()
 def preprocess(x, y):
     x = tf.cast(x, dtype=tf.float32)
     x = tf.divide(x, tf.constant(255.0, dtype=tf.float32))
+    #y = np.pi/180 * y
     return x, y
 
 def Rx(theta):
-    x = theta * np.pi / 180.
+    #x = theta * np.pi / 180.
+    x = theta
     r11, r12, r13 = 1., 0. , 0.
     r21, r22, r23 = 0., np.cos(x), -np.sin(x)
     r31, r32, r33 = 0., np.sin(x), np.cos(x)
     return np.array([[r11, r12, r13], [r21, r22, r23], [r31, r32, r33]])
 
 def Ry(theta):
-    x = theta * np.pi / 180.
+    #x = theta * np.pi / 180.
+    x = theta
     r11, r12, r13 = np.cos(x), 0., np.sin(x)
     r21, r22, r23 = 0., 1., 0.
     r31, r32, r33 = -np.sin(x), 0, np.cos(x)
     return np.array([[r11, r12, r13], [r21, r22, r23], [r31, r32, r33]])
 
 def Rz(theta):
-    x = theta * np.pi / 180.
+    #x = theta * np.pi / 180.
+    x = theta
     r11, r12, r13 = np.cos(x), -np.sin(x), 0.
     r21, r22, r23 = np.sin(x), np.cos(x), 0.
     r31, r32, r33 = 0., 0., 1.
@@ -65,7 +72,7 @@ trainScans = ["SMIR.Body.021Y.M.CT.57761", "SMIR.Body.025Y.M.CT.59477", "SMIR.Bo
              "SMIR.Body.043Y.M.CT.58317", "SMIR.Body.045Y.M.CT.59467", "SMIR.Body.045Y.M.CT.59476", 
              "SMIR.Body.045Y.M.CT.59481", "SMIR.Body.047Y.F.CT.57792", "SMIR.Body.049Y.M.CT.59482", 
              "SMIR.Body.052Y.M.CT.57765", "SMIR.Body.052Y.M.CT.59475",  "SMIR.Body.057Y.F.CT.57793", 
-             "SMIR.Body.057Y.M.CT.57609", "SMIR.Body.057Y.M.CT.59483", "SMIR.Body.058Y.M.CT.57767"]
+             "SMIR.Body.057Y.M.CT.59483", "SMIR.Body.058Y.M.CT.57767"]
     
 testScans = ["SMIR.Body.025Y.M.CT.57697", "SMIR.Body.033Y.M.CT.57766", "SMIR.Body.037Y.F.CT.57796", 
             "SMIR.Body.040Y.M.CT.57768", "SMIR.Body.045Y.M.CT.59470", "SMIR.Body.049Y.M.CT.57791", 
@@ -97,7 +104,7 @@ voiFFTShifted = np.fft.fftshift(voiFFT)
 del voiFFT
 
 ctVolume_val = nib.load(imgpath_val).get_fdata().astype(int)
-ctVolume_val = np.squeeze(ctVolume)
+ctVolume_val = np.squeeze(ctVolume_val)
 voi_val = ctVolume_val[:,:, :N] # Extracts volume of interest from the full body ct volume
 #voi = normalize(voi)    # Rescale CT numbers between 0 and 255
 voi_val = voi_val - np.min(voi_val)
@@ -111,7 +118,6 @@ del voiFFT_val
 
 print("3D FFT computed.")
 
-
 # Rotation and Interpolation of the projection slice from the 3D FFT volume
 x_axis = np.linspace(-N+0.5, N-0.5, 2*N)
 y_axis = np.linspace(-N+0.5, N-0.5, 2*N)
@@ -124,8 +130,8 @@ def generate_train_data(viewpoint):
     theta_x = viewpoint[0]
     theta_y = viewpoint[1]
     theta_z = viewpoint[2]
-    #tx = viewpoint[1]
-    #ty = viewpoint[2]
+    tx = np.random.choice([i for i in range(-20, 21, 5)])
+    ty = np.random.choice([i for i in range(-20, 21, 5)])
     rotationMatrix = Rx(theta_x) @ Ry(theta_y) @ Rz(theta_z)
     projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
     projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=voiFFTShifted, xi=projectionSlice, method="linear",
@@ -133,18 +139,19 @@ def generate_train_data(viewpoint):
     img = np.abs(fftshift(ifft2(projectionSliceFFT)))
     img = img[N//2:N+N//2, N//2:N+N//2]
     img = normalize(img)
-    #img = img[56+tx:456+tx, 56+ty:456+ty]
+    img = img[56+tx:456+tx, 56+ty:456+ty]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-    label = np.array([theta_x, theta_y, theta_z])
-    return img, label
+    roll, pitch, yaw = theta_z, theta_x, theta_y
+    #print(euler_to_quaternion([roll, pitch, yaw]))
+    return img, np.array(euler_to_quaternion([roll, pitch, yaw]))
 
 def generate_val_data(viewpoint):
     theta_x = viewpoint[0]
     theta_y = viewpoint[1]
     theta_z = viewpoint[2]
-    #tx = viewpoint[1]
-    #ty = viewpoint[2]
+    tx = np.random.choice([i for i in range(-20, 21, 5)])
+    ty = np.random.choice([i for i in range(-20, 21, 5)])
     rotationMatrix = Rx(theta_x) @ Ry(theta_y) @ Rz(theta_z)
     projectionSlice = np.squeeze(rotate_plane(projectionPlane, rotationMatrix))
     projectionSliceFFT = interpn(points=(x_axis, y_axis, z_axis), values=voiFFTShifted_val, xi=projectionSlice, method="linear",
@@ -152,22 +159,26 @@ def generate_val_data(viewpoint):
     img = np.abs(fftshift(ifft2(projectionSliceFFT)))
     img = img[N//2:N+N//2, N//2:N+N//2]
     img = normalize(img)
-    #img = img[56+tx:456+tx, 56+ty:456+ty]
+    img = img[56+tx:456+tx, 56+ty:456+ty]
     img = cv.resize(img, INPUT_SIZE, interpolation=cv.INTER_AREA)
     img = np.repeat(img[:,:, np.newaxis], 3, axis=-1)
-    label = np.array([theta_x, theta_y, theta_z])
-    return img, label
+    roll, pitch, yaw = theta_z, theta_x, theta_y
+    return img, np.array(euler_to_quaternion([roll, pitch, yaw]))
 
 def select_viewpoints(batch_size):
     batch = []
     for i in range(batch_size):
-        theta_x = np.random.uniform(low=-90, high=90) 
-        theta_y = 0 # np.random.uniform(low=-30, high=30)
-        theta_z = np.random.uniform(low=-180, high=180)
+        theta_x = np.random.uniform(low=-np.pi/2, high=np.pi/2, size=None)
+        theta_y = np.random.uniform(low=-np.pi, high=np.pi, size=None)
+        theta_z = np.random.uniform(low=-np.pi, high=np.pi, size=None)
         batch.append([theta_x, theta_y, theta_z])
     return batch
 
-
+def normalizeVector(q, normq):
+    if normq == 0.0:
+        normq = 1e-30
+    return q/normq
+    
 # Define the model
 baseModel = tf.keras.applications.InceptionV3(input_shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3), 
                                               include_top=False, weights="imagenet")
@@ -175,24 +186,11 @@ inputs = tf.keras.Input(shape=(INPUT_SIZE[0], INPUT_SIZE[1], 3))
 x = baseModel(inputs)
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
 x = tf.keras.layers.Dense(1024, activation="relu")(x)
-outputx = tf.keras.layers.Dense(1, activation=tf.keras.activations.tanh)(x)
-outputx = tf.multiply(outputx, tf.constant(90.0))
-#outputy = tf.keras.layers.Dense(1, activation=tf.keras.activations.tanh)(x)
-#outputy = tf.multiply(outputy, tf.constant(30.0))
-outputz = tf.keras.layers.Dense(1, activation=tf.keras.activations.tanh)(x)
-outputz = tf.multiply(outputz, tf.constant(180.0))
-model = tf.keras.Model(inputs=inputs, outputs=[outputx,  outputz]) #outputy,
+outputs = tf.keras.layers.Dense(4, activation=None)(x)
+model = tf.keras.Model(inputs=inputs, outputs=outputs) #outputy,
 model.summary()
 
 # Define cost function, optimizer and metrics
-loss_objectx = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.AUTO)
-loss_objecty = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.AUTO)
-loss_objectz = tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.AUTO)
-
-test_lossx = tf.keras.metrics.MeanSquaredError()
-#test_lossy = tf.keras.metrics.MeanSquaredError()
-test_lossz = tf.keras.metrics.MeanSquaredError()
-
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(args.learning_rate, decay_steps=1000, 
                                                             decay_rate=0.96, staircase=True)
 optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule)
@@ -202,14 +200,10 @@ test_accuracy = tf.keras.metrics.CategoricalAccuracy(name="test_accuracy")
 @tf.function
 def train_step(images, labels):
     # All ops involving trainable variables under the GradientTape context manager are recorded for gradient computation
-    #with tf.device("/gpu:1"):
     with tf.GradientTape() as tape:
-        predx, predz = model(images, training=True)
-        lossx = loss_objectx(labels, predx)
-        #lossy = loss_objecty(labels, predy)
-        lossz = loss_objectz(labels, predz)
-        loss = tf.divide(lossx, tf.constant(180.0**2)) + tf.divide(lossz, tf.constant(360.0**2)) # + tf.divide(lossy, tf.constant(60.0**2)) 
-        #loss = tf.reduce_sum(loss)/images.shape[0]    # use images.shape[0] instead of args.batch_size
+        rawpreds = model(images, training=True)
+        loss = quaternionDistance(rawpreds, labels)
+        loss = tf.reduce_sum(loss)/images.shape[0]    # use images.shape[0] instead of args.batch_size
     
     # Calculate gradients of cost function w.r.t trainable variables and release resources held by GradientTape
     gradients = tape.gradient(loss, model.trainable_variables)
@@ -218,18 +212,17 @@ def train_step(images, labels):
 
 @tf.function
 def test_step(images, labels):
-    #with tf.device("/gpu:1"):
-    predx, predz = model(images, training=True)
-    test_lossx.update_state(labels, predx)
-    #test_lossy.update_state(labels, predy)
-    test_lossz.update_state(labels, predz)
+    rawpreds = model(images, training=True)
+    loss = quaternionDistance(rawpreds, labels)
+    loss = tf.reduce_sum(loss)/images.shape[0]
+    return loss
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-thetax_thetay/checkpoints/"
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d-regression-quaternions/checkpoints/"
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
-manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=20)
+manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=10)
 
 step = 0
 epoch = 0
@@ -252,8 +245,8 @@ while True:
     
     # Save logs with TensorBoard Summary
     if step == 0:
-        train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-thetax_thetay/logs/train"
-        val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-thetax_thetay/logs/val"
+        train_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d-regression-quaternions/logs/train"
+        val_logdir = "/scratch/hnkmah001/phd-projects/viewpoint-estimation-3d-regression-quaternions/logs/val"
         train_summary_writer = tf.summary.create_file_writer(train_logdir)
         val_summary_writer = tf.summary.create_file_writer(val_logdir)
     
@@ -265,17 +258,18 @@ while True:
             #tf.summary.scalar("accuracy", train_accuracy.result(), step=step)
             tf.summary.image("image", images, step=step, max_outputs=2)
         toc = time.time()
-        print("Step {}: \t loss = {:.4f}  \t ({:.2f} seconds/step)".format(step, 
+        print("Step {}: \t loss = {:.8f}  \t ({:.2f} seconds/step)".format(step, 
                 train_loss, toc-tic))
+
         # Reset metrics for the next iteration
         #train_accuracy.reset_states()
     
-    if step % 5000 == 0:
+    if step % 2000 == 0:
         epoch += 1
 
         x_val = []
         y_val = []
-        val_viewpoints_batch = select_viewpoints(200*args.batch_size)
+        val_viewpoints_batch = select_viewpoints(100*args.batch_size)
         with Pool() as pool:
             val_batch = pool.map(generate_val_data, val_viewpoints_batch)
 
@@ -288,21 +282,22 @@ while True:
         y_val = np.array(y_val)
         val_data = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(args.batch_size)
 
+        test_it = 0
+        test_loss = 0.
         for test_images, test_labels in tqdm(val_data.map(preprocess, 
                                                 num_parallel_calls=tf.data.experimental.AUTOTUNE), desc="Validation"):
-            test_step(test_images, test_labels)
-        test_loss = test_lossx.result()/(90.0**2)  + test_lossz.result()/(360.0**2)
+            test_loss += test_step(test_images, test_labels)
+            test_it +=1
+        test_loss = test_loss/tf.constant(test_it, dtype=tf.float32)
         with val_summary_writer.as_default():
             tf.summary.scalar("val_loss", test_loss, step=epoch)
             #tf.summary.scalar("val_accuracy", test_accuracy.result(), step=epoch)
             tf.summary.image("val_images", test_images, step=epoch, max_outputs=2)
 
         ckpt_path = manager.save()
-        template = "Epoch {}, Validation Loss: {:.4f}, ckpt {}\n\n"
+        template = "Epoch {}, Validation Loss: {:.8f}, ckpt {}\n\n"
         print(template.format(epoch, test_loss, ckpt_path))
         
         # Reset metrics for the next epoch
         #test_accuracy.reset_states()
-        test_lossx.reset_states()
-        #test_lossy.reset_states()
-        test_lossz.reset_states()
+

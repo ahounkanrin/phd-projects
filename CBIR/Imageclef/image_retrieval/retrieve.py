@@ -137,7 +137,7 @@ test_loss = tf.keras.metrics.CategoricalCrossentropy(name="test_loss")
 
 # Define checkpoint manager to save model weights
 checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-checkpoint_dir = "/scratch/hnkmah001/phd-projects/CBIR/Imageclef/cnn-lsr/{}/checkpoints/".format(args.cnn)
+checkpoint_dir = "/scratch/hnkmah001/phd-projects/CBIR/Imageclef/cnn-irma_crossentropy/{}/checkpoints/".format(args.cnn)
 
 manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_dir, max_to_keep=20)
 checkpoint.restore(manager.checkpoints[-1]) 
@@ -151,6 +151,8 @@ for img_index in img_indexes:
     test_img = x_test[img_index]
     test_img = cv.resize(test_img, (128, 128), interpolation=cv.INTER_AREA)
     test_img_hog = hog(test_img, orientations=8, pixels_per_cell=(16, 16), cells_per_block=(1, 1))
+
+    test_img = cv.resize(x_test[img_index], (256, 256), interpolation=cv.INTER_AREA)
     test_img = test_img/255.
     test_img = np.expand_dims(test_img, axis=0)
     #test_label = y_test[img_index]

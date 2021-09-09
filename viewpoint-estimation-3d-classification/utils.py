@@ -8,7 +8,7 @@ from scipy import ndimage
 
 
 epsilon = 1e-30
-nclasses = 360
+nclasses = 36
 
 def rotate_plane(plane, rotationMatrix):
 	rotatedPlane = np.matmul(plane, rotationMatrix)
@@ -112,8 +112,8 @@ def angular_distance2(angle1, angle2):
     return dist
 
 def get_weights(gt_class, sigma=7.0): 
-    k = tf.constant([i for i in range(nclasses)], dtype=tf.float32)
-    gt = gt_class * tf.ones(shape=(nclasses))
+    k = 10*tf.constant([i for i in range(nclasses)], dtype=tf.float32)
+    gt = 10*gt_class * tf.ones(shape=(nclasses))
     distances = angular_distance2(gt, k)
     weights = tf.math.exp(-distances/sigma)
     return weights
@@ -128,5 +128,17 @@ def geom_cross_entropy(predictions, labels):
 
 
 
-    
+def get_weights_el(gt_class, sigma=7.0): 
+    k = 10*tf.constant([i for i in range(nclasses//2)], dtype=tf.float32) # multiply prediction by bin size to get angle estimate
+    gt = 10*gt_class * tf.ones(shape=(nclasses//2))
+    distances = angular_distance2(gt, k)
+    weights = tf.math.exp(-distances/sigma)
+    return weights   
 
+def geom_cross_entropy_el(predictions, labels):
+    gt_classes = tf.argmax(labels, axis=-1) 
+    gt_classes = tf.cast(gt_classes, dtype=tf.float32)
+    weights = tf.map_fn(lambda x: get_weights_el(x), gt_classes)
+    pred_log = tf.math.log(predictions + epsilon)
+    loss = - weights * pred_log
+    return loss
