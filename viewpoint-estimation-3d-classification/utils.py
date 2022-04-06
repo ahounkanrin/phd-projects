@@ -142,3 +142,45 @@ def geom_cross_entropy_el(predictions, labels):
     pred_log = tf.math.log(predictions + epsilon)
     loss = - weights * pred_log
     return loss
+
+
+def euler_to_quaternion(r):
+    # print(r)
+    (yaw, pitch, roll) = (r[0], r[1], r[2])
+    qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+    qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+    qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+    qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+    #print(qx, qy, qz, qw)
+    return [qx, qy, qz, qw]
+
+# def quaternion_to_euler(q):
+#     (x, y, z, w) = (q[0], q[1], q[2], q[3])
+#     t0 = +2.0 * (w * x + y * z)
+#     t1 = +1.0 - 2.0 * (x * x + y * y)
+#     roll = math.atan2(t0, t1)
+#     t2 = +2.0 * (w * y - z * x)
+#     t2 = +1.0 if t2 > +1.0 else t2
+#     t2 = -1.0 if t2 < -1.0 else t2
+#     pitch = math.asin(t2)
+#     t3 = +2.0 * (w * z + x * y)
+#     t4 = +1.0 - 2.0 * (y * y + z * z)
+#     yaw = math.atan2(t3, t4)
+#     return [yaw, pitch, roll]
+
+def quaternionLoss(predictions, labels):
+    assert predictions.shape == labels.shape
+    predNorm = tf.broadcast_to(tf.norm(predictions, axis=-1, keepdims=True), shape=predictions.shape)
+    predictions = tf.divide(predictions, predNorm)
+    labels = tf.cast(labels, dtype=tf.float32)
+    loss_batch = 1 - tf.math.square(tf.reduce_sum(predictions * labels, axis=-1))
+    #loss = tf.math.reduce_mean(loss_batch)
+    return loss_batch #, predictions
+
+def quaternionAngle(q1, q2):
+    prod = tf.math.abs(tf.reduce_sum(tf.constant(q1) * tf.constant(q2)))
+    if prod > 1.0:
+        prod = tf.constant(1.0, dtype=tf.float64)
+    theta = tf.math.acos(prod)
+    theta = 180.0*theta/np.pi
+    return theta

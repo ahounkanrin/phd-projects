@@ -1,0 +1,11 @@
+Median Error = 5.8728
+Accuracy at theta = 0 is: 0.0000
+Accuracy at theta = 10 is: 0.7400
+Accuracy at theta = 20 is: 0.8280
+Accuracy at theta = 30 is: 0.8530
+Accuracy at theta = 40 is: 0.8760
+Accuracy at theta = 50 is: 0.9010
+Accuracy at theta = 60 is: 0.9190
+Accuracy at theta = 70 is: 0.9430
+Accuracy at theta = 80 is: 0.9740
+Accuracy at theta = 90 is: 1.0000

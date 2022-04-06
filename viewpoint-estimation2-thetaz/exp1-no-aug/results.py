@@ -107,6 +107,16 @@ acc_conf_score_cnn = np.mean([acc1_5, acc2_5, acc3_5, acc4_5, acc5_5, acc6_5, ac
 acc_conf_score_ae_cnn = np.mean([acc1_6, acc2_6, acc3_6, acc4_6, acc5_6, acc6_6, acc7_6, acc8_6], axis=0)
 acc_conf_score_ae = np.mean([acc1_7, acc2_7, acc3_7, acc4_7, acc5_7, acc6_7, acc7_7, acc8_7], axis=0)
 
+
+print("Reference", acc_ref)
+print("trans_scale", acc_translation_scaling)
+print("entropy", acc_translation_scaling_entropy)
+print("average", acc_translation_scaling_average)
+print("cnn", acc_conf_score_cnn)
+print("ae_cnn", acc_conf_score_ae_cnn)
+print("ae", acc_conf_score_ae)
+
+
 plt.figure(figsize=[8, 5])
 plt.title("Reference (central subimages)")
 plt.ylabel("Accuracy")
