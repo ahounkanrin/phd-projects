@@ -71,7 +71,8 @@ if __name__ == "__main__":
     ctVolume = np.squeeze(ctVolume)
     voi = ctVolume[:,:, :N] # Extracts volume of interest (512 x 512 x 512) from the full body ct volume (512 x 512 x 3000)
     voi = voi - np.min(voi) # shift to avoid negative CT numbers
-    voi = np.pad(voi, N//2, "constant", constant_values=0)
+    #voi = np.pad(voi, N//2, "constant", constant_values=0)
+    voi = np.pad(voi, N, "constant", constant_values=0)
     toc_load = time.time()
     print("Done after {:.2f} seconds.".format(toc_load - tic_load)) 
 
@@ -88,19 +89,24 @@ if __name__ == "__main__":
 
     # Rotation and Interpolation of the projection slice from the 3D FFT volume
 
-    x = np.linspace(-N+0.5, N-0.5, 2*N)
-    y = np.linspace(-N+0.5, N-0.5, 2*N)
-    z = np.linspace(-N+0.5, N-0.5, 2*N)
+    #x = np.linspace(-N+0.5, N-0.5, 2*N)
+    #y = np.linspace(-N+0.5, N-0.5, 2*N)
+    #z = np.linspace(-N+0.5, N-0.5, 2*N)
+    
+    x = np.linspace(-N+0.5, N-0.5, 3*N)
+    y = np.linspace(-N+0.5, N-0.5, 3*N)
+    z = np.linspace(-N+0.5, N-0.5, 3*N)
 
 
     projectionPlane = np.array([[xi, 0, zi] for xi in x for zi in z])
     #projectionPlane = np.array([[xi, yi, 0] for xi in x for yi in y])
-    projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
+    #projectionPlane = np.reshape(projectionPlane, (2*N, 2*N, 3, 1), order="F")
+    projectionPlane = np.reshape(projectionPlane, (3*N, 3*N, 3, 1), order="F")
 
     def render_view(viewpoint):
         theta_x = 0 #viewpoint[0] #np.random.randint(-10, 10)
-        theta_y = viewpoint[0] #np.random.randint(-10, 10)
-        theta_z = 0 #viewpoint[0]
+        theta_y = 0 #viewpoint[0] #np.random.randint(-10, 10)
+        theta_z = viewpoint[0]
         tx = viewpoint[1]
         ty = viewpoint[2]
         tic_rendering = time.time()
@@ -109,17 +115,18 @@ if __name__ == "__main__":
         projectionSliceFFT = interpn(points=(x, y, z), values=voiFFTShifted, xi=projectionSlice, method="linear",
                                      bounds_error=False, fill_value=0)      
         img = np.abs(fftshift(ifft2(projectionSliceFFT)))
-        img = img[N//2:N+N//2, N//2:N+N//2]
+        #img = img[N//2:N+N//2, N//2:N+N//2]
+        img = img[N:2*N, N:2*N]
         img = normalize(img)
         #img = img[56+tx:456+tx, 56+ty:456+ty]
         #img = cv.resize(img, (400, 400), interpolation=cv.INTER_AREA)
         #img = img[56+tx:456+tx, 56+ty:456+ty]
-        cv.imwrite(save_dir+"ry{}.png".format(theta_y), img)
+        cv.imwrite(save_dir+"rz{}.png".format(theta_z), img)
         toc_rendering = time.time()
-        print("theta = {}\t {:.2f} seconds".format(theta_y, toc_rendering-tic_rendering))
+        print("theta = {}\t {:.2f} seconds".format(theta_z, toc_rendering-tic_rendering))
         
 
-    viewpoints = [(i, 0, 0) for i in range(0, 360, 30)]
+    viewpoints = [(i, 0, 0) for i in range(10, 101, 10)]
     for viewpoint in viewpoints:
         render_view(viewpoint)
 
